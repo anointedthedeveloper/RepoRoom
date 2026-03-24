@@ -1,2 +1,3 @@
-# PulseChat
-A modern real-time chat application powered by WebSockets.
+# Welcome to your Lovable project
+
+TODO: Document your project here
