@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2, Menu, Settings, MessageCircleOff, MessageCircle, WandSparkles } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2, Menu, Settings, MessageCircle, WandSparkles, PanelTopClose, PanelTopOpen, PanelLeftOpen, PanelLeftClose, CheckSquare, FolderKanban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,7 @@ interface ChannelReaction {
 const WorkspacePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     workspaces, activeWorkspace, channels, members, tasks, projectFiles, loading,
     selectWorkspace, createWorkspace, joinWorkspace, createChannel,
@@ -92,6 +93,14 @@ const WorkspacePage = () => {
   const [creatingGithubIssue, setCreatingGithubIssue] = useState(false);
   const [showGuide, setShowGuide] = useState(() => localStorage.getItem("chatflow_workspace_guide_closed") !== "true");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const reactionsRef = useRef<ChannelReaction[]>([]);
+  const standaloneView = location.pathname === "/workspace/tasks"
+    ? "tasks"
+    : location.pathname === "/workspace/projects"
+    ? "projects"
+    : location.pathname === "/workspace/github"
+    ? "github"
+    : "chat";
 
   // Auto-select first workspace
   useEffect(() => {
@@ -140,6 +149,7 @@ const WorkspacePage = () => {
   }, [activeChannel]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { reactionsRef.current = reactions; }, [reactions]);
 
   const reactionsByMsg = reactions.reduce<Record<string, Array<{ emoji: string; count: number; mine: boolean }>>>((acc, reaction) => {
     if (!acc[reaction.message_id]) acc[reaction.message_id] = [];
@@ -172,23 +182,40 @@ const WorkspacePage = () => {
   const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!user || !activeWorkspace || !activeChannel) return;
 
-    const existing = reactions.find((reaction) =>
+    const existing = reactionsRef.current.find((reaction) =>
       reaction.message_id === messageId &&
       reaction.user_id === user.id &&
       reaction.emoji === emoji
     );
 
     if (existing) {
+      setReactions((prev) => prev.filter((reaction) => reaction.id !== existing.id));
       const { error } = await supabase
         .from("channel_message_reactions")
         .delete()
         .eq("id", existing.id);
 
-      if (error) toast.error("Could not remove reaction");
+      if (error) {
+        setReactions((prev) => [...prev, existing]);
+        toast.error("Could not remove reaction");
+      }
       return;
     }
 
-    const { error } = await supabase
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const optimisticReaction: ChannelReaction = {
+      id: tempId,
+      workspace_id: activeWorkspace.id,
+      channel_id: activeChannel.id,
+      message_id: messageId,
+      user_id: user.id,
+      emoji,
+      created_at: new Date().toISOString(),
+    };
+
+    setReactions((prev) => [...prev, optimisticReaction]);
+
+    const { data, error } = await supabase
       .from("channel_message_reactions")
       .insert({
         workspace_id: activeWorkspace.id,
@@ -196,10 +223,20 @@ const WorkspacePage = () => {
         message_id: messageId,
         user_id: user.id,
         emoji,
-      } as never);
+      } as never)
+      .select()
+      .single();
 
-    if (error) toast.error("Could not add reaction");
-  }, [activeChannel, activeWorkspace, reactions, user]);
+    if (error) {
+      setReactions((prev) => prev.filter((reaction) => reaction.id !== tempId));
+      toast.error("Could not add reaction");
+      return;
+    }
+
+    if (data) {
+      setReactions((prev) => prev.map((reaction) => reaction.id === tempId ? data as unknown as ChannelReaction : reaction));
+    }
+  }, [activeChannel, activeWorkspace, user]);
 
   const handleConvertToTask = useCallback((msgId: string, content: string) => {
     setTaskFromMsg({ id: msgId, content });
@@ -317,6 +354,14 @@ const WorkspacePage = () => {
     localStorage.setItem("chatflow_workspace_guide_closed", "true");
   }, []);
 
+  const handleSidebarMenu = useCallback(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen((value) => !value);
+      return;
+    }
+    setSidebarCollapsed((value) => !value);
+  }, []);
+
   return (
     <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
       <AnimatePresence>
@@ -349,8 +394,9 @@ const WorkspacePage = () => {
           onJoinWorkspace={() => setShowJoinWs(true)}
           onCreateChannel={() => setShowCreateCh(true)}
           onSetDevStatus={(s) => activeWorkspace && setDevStatus(activeWorkspace.id, s)}
-          onOpenTasks={() => setShowTasks((v) => !v)}
-          onOpenProjects={() => setShowProjects((v) => !v)}
+          onOpenTasks={() => navigate("/workspace/tasks")}
+          onOpenProjects={() => navigate("/workspace/projects")}
+          onOpenGithub={() => navigate("/workspace/github")}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebarCollapsed={() => setSidebarCollapsed((value) => !value)}
         />
@@ -358,7 +404,7 @@ const WorkspacePage = () => {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 p-3 lg:p-4 gap-3">
-        {showGuide && (
+        {showGuide && standaloneView === "chat" && (
           <div className="rounded-[28px] border border-primary/15 bg-primary/5 px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -400,38 +446,27 @@ const WorkspacePage = () => {
 
         {/* Channel header */}
         {activeChannel ? (
-          <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 backdrop-blur-sm flex items-center gap-3 shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-            <button onClick={() => setSidebarOpen(true)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors lg:hidden">
-              <Menu className="h-4 w-4" />
-            </button>
-            <button onClick={() => navigate("/")} title="Back to chats"
-              className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
-              <MessageSquare className="h-4 w-4" />
-            </button>
-            <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-semibold text-foreground">{activeChannel.name}</h2>
-              {activeChannel.description && <p className="text-[11px] text-muted-foreground">{activeChannel.description}</p>}
-            </div>
-            {activeWorkspace && (
-              <div className="hidden xl:flex items-center gap-2 text-[11px]">
-                <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{projects.length} projects</span>
-                <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{linkedRepos.length} repos</span>
+          <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 backdrop-blur-sm shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSidebarOpen(true)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors lg:hidden">
+                <Menu className="h-4 w-4" />
+              </button>
+              <button onClick={() => navigate("/")} title="Back to chats"
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
+                <MessageSquare className="h-4 w-4" />
+              </button>
+              <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">{activeChannel.name}</h2>
+                {activeChannel.description && <p className="text-[11px] text-muted-foreground">{activeChannel.description}</p>}
               </div>
-            )}
-            <button onClick={() => { setShowAddPeople(true); setAddError(""); setAddSuccess(""); setAddUsername(""); }}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted">
-              <UserPlus className="h-3.5 w-3.5" /> Add people
-            </button>
-            <button onClick={() => setChatOpen((value) => !value)}
-              title={chatOpen ? "Hide chat" : "Open chat"}
-              className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
-                chatOpen ? "hover:bg-muted text-muted-foreground hover:text-foreground" : "bg-primary/10 text-primary"
-              }`}>
-              {chatOpen ? <MessageCircleOff className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
-            </button>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />{members.length}
+              {activeWorkspace && (
+                <div className="hidden xl:flex items-center gap-2 text-[11px]">
+                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{projects.length} projects</span>
+                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{linkedRepos.length} repos</span>
+                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{members.length} members</span>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -447,6 +482,60 @@ const WorkspacePage = () => {
         )}
 
         <div className="flex-1 flex overflow-hidden gap-3 min-h-0">
+          {standaloneView === "tasks" && activeWorkspace && (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <TasksPanel
+                tasks={tasks}
+                members={members}
+                workspaceId={activeWorkspace.id}
+                onUpdateStatus={(id, status) => updateTaskStatus(id, status, activeWorkspace.id)}
+                onCreateTask={(title, desc) => createTask(activeWorkspace.id, title, desc, activeChannel?.id)}
+                onClose={() => navigate("/workspace")}
+                fullPage
+              />
+            </div>
+          )}
+
+          {standaloneView === "projects" && activeWorkspace && (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ProjectsPanel
+                projects={projects}
+                linkedRepos={linkedRepos.map((repo) => repo.repo_full_name)}
+                projectFiles={projectFiles}
+                onCreateProject={(name, description, linkedRepoFullName) => createProject(activeWorkspace.id, name, description, linkedRepoFullName)}
+                onUpdateStatus={(projectId, status) => updateProjectStatus(projectId, status, activeWorkspace.id)}
+                onUpdateRepo={(projectId, linkedRepoFullName) => updateProjectRepo(projectId, linkedRepoFullName, activeWorkspace.id)}
+                onClose={() => navigate("/workspace")}
+                fullPage
+              />
+            </div>
+          )}
+
+          {standaloneView === "github" && (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <GithubPanel
+                onClose={() => navigate("/workspace")}
+                workspaceId={activeWorkspace?.id || null}
+                linkedRepoNames={linkedRepos.map((repo) => repo.repo_full_name)}
+                onLinkRepo={handleLinkRepoToWorkspace}
+                projects={projects}
+                onLinkRepoToProject={async (projectId, repoFullName) => {
+                  if (!activeWorkspace) return;
+                  await updateProjectRepo(projectId, repoFullName, activeWorkspace.id);
+                  toast.success("Repo linked to project");
+                }}
+                onOpenFiles={(owner, repo, branch) => {
+                  setFileBrowserRepo({ owner, repo, branch });
+                  setShowFileBrowser(true);
+                  navigate("/workspace");
+                }}
+                fullPage
+              />
+            </div>
+          )}
+
+          {standaloneView === "chat" && (
+          <>
           {/* Messages */}
           {chatOpen ? (
           <div className="flex-1 flex flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card/80 backdrop-blur-sm shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
@@ -563,10 +652,12 @@ const WorkspacePage = () => {
               <p className="mt-2 max-w-md text-sm text-muted-foreground">Use the project, GitHub, and file panels with a little more room. Tap the floating chat launcher when you want the conversation back.</p>
             </div>
           )}
+          </>
+          )}
 
           {/* Tasks panel */}
           <AnimatePresence>
-            {showTasks && activeWorkspace && (
+            {standaloneView === "chat" && showTasks && activeWorkspace && (
               <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="hidden xl:block overflow-hidden shrink-0">
                 <TasksPanel
                   tasks={tasks}
@@ -581,7 +672,7 @@ const WorkspacePage = () => {
           </AnimatePresence>
 
           <AnimatePresence>
-            {showProjects && activeWorkspace && (
+            {standaloneView === "chat" && showProjects && activeWorkspace && (
               <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 360, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="hidden xl:block overflow-hidden shrink-0">
                 <ProjectsPanel
                   projects={projects}
@@ -598,7 +689,7 @@ const WorkspacePage = () => {
 
           {/* GitHub panel */}
           <AnimatePresence>
-            {showGithub && (
+            {standaloneView === "chat" && showGithub && (
               <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="hidden lg:block overflow-hidden shrink-0">
                 <GithubPanel
                   onClose={() => setShowGithub(false)}
@@ -643,16 +734,64 @@ const WorkspacePage = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-border/70 bg-card/90 px-2 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+      <div className="fixed inset-x-3 bottom-4 z-40 flex justify-center">
+        <div className="flex w-full max-w-4xl items-center justify-between gap-1 rounded-[22px] border border-border/70 bg-card/92 px-2 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
           <button
-            onClick={() => setShowGithub((value) => !value)}
+            onClick={handleSidebarMenu}
             className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
-              showGithub ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              sidebarOpen || sidebarCollapsed ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            title="Toggle sidebar"
+          >
+            {sidebarOpen || !sidebarCollapsed ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => navigate("/workspace/tasks")}
+            className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+              standaloneView === "tasks" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            title="Tasks"
+          >
+            <CheckSquare className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => navigate("/workspace/projects")}
+            className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+              standaloneView === "projects" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            title="Projects"
+          >
+            <FolderKanban className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => standaloneView === "github" ? navigate("/workspace") : setShowGithub((value) => !value)}
+            className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+              standaloneView === "github" || showGithub ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
             title="GitHub"
           >
             <Github className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setShowAddPeople(true);
+              setAddError("");
+              setAddSuccess("");
+              setAddUsername("");
+            }}
+            className="h-10 w-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Add people"
+          >
+            <UserPlus className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => standaloneView === "chat" ? setChatOpen((value) => !value) : navigate("/workspace")}
+            className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+              standaloneView === "chat" && chatOpen ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "bg-primary/10 text-primary"
+            }`}
+            title={standaloneView === "chat" && chatOpen ? "Hide chat" : "Open chat"}
+          >
+            {standaloneView === "chat" && chatOpen ? <PanelTopClose className="h-4 w-4" /> : <PanelTopOpen className="h-4 w-4" />}
           </button>
           <button
             onClick={() => navigate("/dashboard")}
@@ -669,15 +808,6 @@ const WorkspacePage = () => {
             <Settings className="h-4 w-4" />
           </button>
         </div>
-        {!chatOpen && (
-          <button
-            onClick={() => setChatOpen(true)}
-            className="h-14 w-14 rounded-2xl gradient-primary text-white shadow-[0_18px_50px_rgba(59,130,246,0.35)] flex items-center justify-center"
-            title="Open chat"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </button>
-        )}
       </div>
 
       {/* Convert to task modal */}

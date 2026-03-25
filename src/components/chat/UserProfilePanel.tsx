@@ -372,7 +372,8 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onClear
 
               {/* DM actions */}
               {!chat.is_group && (
-                <div className="flex gap-2 px-4 py-4 border-b border-border">
+                <div className="border-b border-border px-4 py-4">
+                  <div className="flex gap-2">
                   <button onClick={() => { onStartCall("audio"); onClose(); }} className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
                     <Phone className="h-5 w-5 text-primary" />
                     <span className="text-[11px] text-muted-foreground">Audio</span>
@@ -385,6 +386,18 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onClear
                     <MessageSquare className="h-5 w-5 text-primary" />
                     <span className="text-[11px] text-muted-foreground">Message</span>
                   </button>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={handleClearChat} disabled={clearingChat}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-2 transition-colors border border-border">
+                      <Eraser className="h-3.5 w-3.5" />{clearingChat ? "Clearing..." : "Clear Chat"}
+                    </button>
+                    <button onClick={handleArchiveToggle} disabled={archivingChat}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl py-2 transition-colors border border-border">
+                      {chat.isArchived ? <ArchiveX className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      {archivingChat ? "..." : chat.isArchived ? "Unarchive" : "Archive"}
+                    </button>
+                  </div>
                 </div>
               )}
 

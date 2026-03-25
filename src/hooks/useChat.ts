@@ -572,8 +572,35 @@ export function useChat() {
   }, [fetchChatRooms]);
 
   const clearChat = useCallback(async (chatRoomId: string) => {
-    await supabase.from("messages").delete().eq("chat_room_id", chatRoomId);
-    setMessages([]);
+    await supabase
+      .from("messages")
+      .update({
+        content: "This message was deleted",
+        file_url: null,
+        file_type: "deleted",
+        file_name: null,
+        reply_to_id: null,
+        reply_to_text: null,
+        reply_to_sender: null,
+        is_edited: false,
+      } as any)
+      .eq("chat_room_id", chatRoomId);
+
+    setMessages((prev) => prev.map((message) => (
+      message.chat_room_id === chatRoomId
+        ? {
+            ...message,
+            content: "This message was deleted",
+            file_url: null,
+            file_type: "deleted",
+            file_name: null,
+            reply_to_id: null,
+            reply_to_text: null,
+            reply_to_sender: null,
+            is_edited: false,
+          }
+        : message
+    )));
     await fetchChatRooms();
   }, [fetchChatRooms]);
 

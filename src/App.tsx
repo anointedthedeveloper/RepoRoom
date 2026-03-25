@@ -26,6 +26,9 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthRoutePage />} />
               <Route path="/workspace" element={<WorkspacePage />} />
+              <Route path="/workspace/tasks" element={<WorkspacePage />} />
+              <Route path="/workspace/projects" element={<WorkspacePage />} />
+              <Route path="/workspace/github" element={<WorkspacePage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

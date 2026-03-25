@@ -37,6 +37,7 @@ interface Props {
   onLinkRepo?: (repo: GithubRepo) => Promise<void> | void;
   projects?: WorkspaceProject[];
   onLinkRepoToProject?: (projectId: string, repoFullName: string) => Promise<void> | void;
+  fullPage?: boolean;
 }
 
 const GithubPanel = ({
@@ -49,6 +50,7 @@ const GithubPanel = ({
   onLinkRepo,
   projects = [],
   onLinkRepoToProject,
+  fullPage = false,
 }: Props) => {
   const { token, githubUser, repos, loading, error, fetchRepos, searchRepos, fetchCommits, fetchIssues, fetchPRs, createIssue, createRepo, connectWithToken, disconnect } = useGithub();
   const [pat, setPat] = useState("");
@@ -236,7 +238,7 @@ const GithubPanel = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-background border-l border-border w-80 shrink-0">
+    <div className={`h-full flex flex-col bg-background ${fullPage ? "rounded-[28px] border border-border/70 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" : "border-l border-border w-80 shrink-0"}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">

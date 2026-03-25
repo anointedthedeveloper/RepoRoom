@@ -11,6 +11,7 @@ interface Props {
   onUpdateStatus: (projectId: string, status: WorkspaceProject["status"]) => void;
   onUpdateRepo: (projectId: string, linkedRepoFullName: string | null) => void;
   onClose: () => void;
+  fullPage?: boolean;
 }
 
 const STATUS_CONFIG = {
@@ -20,7 +21,7 @@ const STATUS_CONFIG = {
   shipped: { label: "Shipped", icon: CheckCircle2, color: "text-primary", badge: "bg-primary/10 text-primary" },
 };
 
-const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, onUpdateStatus, onUpdateRepo, onClose }: Props) => {
+const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, onUpdateStatus, onUpdateRepo, onClose, fullPage = false }: Props) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [linkedRepo, setLinkedRepo] = useState("");
@@ -42,7 +43,7 @@ const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, o
   };
 
   return (
-    <div className="h-full flex flex-col bg-background border-l border-border w-96 shrink-0">
+    <div className={`h-full flex flex-col bg-background ${fullPage ? "rounded-[28px] border border-border/70 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" : "border-l border-border w-96 shrink-0"}`}>
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FolderKanban className="h-4 w-4 text-primary" />

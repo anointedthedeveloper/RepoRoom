@@ -11,6 +11,7 @@ interface Props {
   onUpdateStatus: (taskId: string, status: Task["status"]) => void;
   onCreateTask: (title: string, description?: string) => void;
   onClose: () => void;
+  fullPage?: boolean;
 }
 
 const STATUS_CONFIG = {
@@ -19,7 +20,7 @@ const STATUS_CONFIG = {
   done:        { label: "Done",        icon: CheckCircle2, color: "text-green-500",          bg: "bg-green-500/10 text-green-500" },
 };
 
-const TasksPanel = ({ tasks, members, onUpdateStatus, onCreateTask, onClose }: Props) => {
+const TasksPanel = ({ tasks, members, onUpdateStatus, onCreateTask, onClose, fullPage = false }: Props) => {
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
   const [filter, setFilter] = useState<"all" | Task["status"]>("all");
@@ -34,7 +35,7 @@ const TasksPanel = ({ tasks, members, onUpdateStatus, onCreateTask, onClose }: P
   };
 
   return (
-    <div className="h-full flex flex-col bg-background border-l border-border w-80 shrink-0">
+    <div className={`h-full flex flex-col bg-background ${fullPage ? "rounded-[28px] border border-border/70 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" : "border-l border-border w-80 shrink-0"}`}>
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckSquare className="h-4 w-4 text-primary" />

@@ -33,6 +33,7 @@ interface MessageData {
 interface MessageBubbleProps {
   message: MessageData;
   isMine: boolean;
+  canDelete?: boolean;
   selected?: boolean;
   onSelect?: (msgId: string) => void;
   onReply?: (msg: MessageData) => void;
@@ -155,7 +156,7 @@ export const DateSeparator = ({ date }: { date: Date }) => (
   </div>
 );
 
-const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, onDelete, onReact, onPin, onForward, onGithubIssue, onRetry, showDate }: MessageBubbleProps) => {
+const MessageBubble = ({ message, isMine, canDelete = isMine, selected, onSelect, onReply, onEdit, onDelete, onReact, onPin, onForward, onGithubIssue, onRetry, showDate }: MessageBubbleProps) => {
   const [lightbox, setLightbox] = useState(false);
   const [showReactPicker, setShowReactPicker] = useState(false);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -286,13 +287,15 @@ const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, o
                   className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
                   <Pin className="h-3.5 w-3.5 text-muted-foreground" />
                 </motion.button>
-                {isMine && !isSystem && (
+                {canDelete && !isSystem && (
                   <>
+                    {isMine && (
                     <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                       onClick={(e) => { e.stopPropagation(); onEdit?.(message); }}
                       className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
                       <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                     </motion.button>
+                    )}
                     <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                       onClick={(e) => { e.stopPropagation(); onDelete?.(message.id); }}
                       className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">

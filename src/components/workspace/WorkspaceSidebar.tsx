@@ -50,6 +50,7 @@ interface Props {
   onSetDevStatus: (status: string) => void;
   onOpenTasks: () => void;
   onOpenProjects: () => void;
+  onOpenGithub?: () => void;
   sidebarCollapsed?: boolean;
   onToggleSidebarCollapsed?: () => void;
 }
@@ -71,6 +72,7 @@ const WorkspaceSidebar = ({
   onSetDevStatus,
   onOpenTasks,
   onOpenProjects,
+  onOpenGithub,
   sidebarCollapsed = false,
   onToggleSidebarCollapsed,
 }: Props) => {
@@ -198,15 +200,15 @@ const WorkspaceSidebar = ({
               <span className="h-4 min-w-[16px] px-1 rounded-full bg-sidebar-accent text-[9px] font-bold text-foreground flex items-center justify-center">{activeProjects}</span>
             )}
           </button>
-          <div className={`mx-3 mt-1 px-2 py-1.5 rounded-lg bg-sidebar-accent/60 flex items-center gap-2 text-[11px] text-muted-foreground ${sidebarCollapsed ? "justify-center" : ""}`}>
+          <button onClick={onOpenGithub} className={`mx-3 mt-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors text-sm text-muted-foreground hover:text-foreground ${sidebarCollapsed ? "justify-center" : ""}`}>
             <Github className="h-3.5 w-3.5 shrink-0" />
             {!sidebarCollapsed && (
               <>
-                <span className="flex-1">Linked repos</span>
+                <span className="flex-1 text-left">Linked repos</span>
                 <span className="font-semibold text-foreground">{linkedRepoCount}</span>
               </>
             )}
-          </div>
+          </button>
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-3 pt-3">

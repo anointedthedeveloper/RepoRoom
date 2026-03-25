@@ -322,6 +322,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
 
   // Pinned message text from chat room
   const pinnedText = chatMeta.pinned_message_text || undefined;
+  const isModerator = chat.is_group && (chat.currentUserRole === "owner" || chat.currentUserRole === "admin");
 
   return (
     <div
@@ -555,6 +556,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
                   reactions: reactionsByMsg[msg.id] ?? [],
                 }}
                 isMine={msg.sender_id === user?.id}
+                canDelete={msg.sender_id === user?.id || !!isModerator}
                 onReply={() => handleReply({ id: msg.id, text: msg.content, sender_id: msg.sender_id })}
                 onEdit={() => handleEdit({ id: msg.id, text: msg.content })}
                 onDelete={() => onDeleteMessage?.(msg.id)}
