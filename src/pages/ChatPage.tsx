@@ -26,6 +26,7 @@ const ChatPage = () => {
     editMessage, deleteMessage, sendSystemMessage,
     toggleReaction, pinMessage, unpinMessage,
     isOtherTyping, sendTyping, fetchChatRooms,
+    clearChat, archiveChat, forwardMessage,
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
@@ -149,6 +150,7 @@ const ChatPage = () => {
               chat={activeChat}
               messages={messages}
               reactions={reactions}
+              allChats={chatRooms.map((r) => ({ id: r.id, displayName: r.displayName }))}
               onSendMessage={(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender) =>
                 sendMessage(text, fileUrl, fileType, fileName, replyToId, replyToText, replyToSender)}
               onEditMessage={editMessage}
@@ -156,6 +158,9 @@ const ChatPage = () => {
               onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
               onPin={(msgId, text) => pinMessage(activeChat.id, msgId, text)}
               onUnpin={() => unpinMessage(activeChat.id)}
+              onForward={(content, fileUrl, fileType, fileName, targetRoomIds) =>
+                forwardMessage(content, fileUrl, fileType, fileName, targetRoomIds || [])}
+              onClearChat={() => clearChat(activeChat.id)}
               onAcceptRequest={() => acceptRequest(activeChat.id)}
               onDeclineRequest={() => { declineRequest(activeChat.id); setActiveChatId(null); }}
               onStartCall={handleStartCall}
@@ -203,6 +208,8 @@ const ChatPage = () => {
             onClose={() => setProfileOpen(false)}
             onStartCall={handleStartCall}
             onRefresh={fetchChatRooms}
+            onClearChat={clearChat}
+            onArchiveChat={archiveChat}
             onRemoveMember={removeMember}
             onLeaveGroup={leaveGroup}
             onPromoteToAdmin={promoteToAdmin}

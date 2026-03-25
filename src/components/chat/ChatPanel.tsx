@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil, Search, Pin, Clock } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Pencil, Search, Pin, Clock, Forward, CheckSquare, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
@@ -41,6 +41,8 @@ interface ChatPanelProps {
   onReact?: (msgId: string, emoji: string) => void;
   onPin?: (msgId: string, text: string) => void;
   onUnpin?: () => void;
+  onForward?: (content: string, fileUrl?: string, fileType?: string, fileName?: string, targetRoomIds?: string[]) => void;
+  onClearChat?: () => void;
   onAcceptRequest?: () => void;
   onDeclineRequest?: () => void;
   onStartCall: (type: "audio" | "video") => void;
@@ -52,6 +54,7 @@ interface ChatPanelProps {
   profileOpen?: boolean;
   isSecondPanel?: boolean;
   onToggleSecondProfile?: () => void;
+  allChats?: Array<{ id: string; displayName: string }>;
 }
 
 interface ReplyState {
@@ -65,7 +68,7 @@ interface EditState {
   text: string;
 }
 
-const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessage, onDeleteMessage, onReact, onPin, onUnpin, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile }: ChatPanelProps) => {
+const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessage, onDeleteMessage, onReact, onPin, onUnpin, onForward, onClearChat, onAcceptRequest, onDeclineRequest, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, onCloseChat, profileOpen, isSecondPanel, onToggleSecondProfile, allChats = [] }: ChatPanelProps) => {
   const { user } = useAuth();
   const { wallpaper } = useThemeContext();
 
@@ -84,6 +87,9 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
   const [searchQuery, setSearchQuery] = useState("");
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
+  const [selectedMsgs, setSelectedMsgs] = useState<Set<string>>(new Set());
+  const [forwardMsg, setForwardMsg] = useState<{ content: string; fileUrl?: string; fileType?: string; fileName?: string } | null>(null);
+  const [forwardTargets, setForwardTargets] = useState<Set<string>>(new Set());
   const ghostMode = localStorage.getItem("chatflow_ghost_mode") === "true";
 
   const prevMsgCount = useRef(messages.length);
@@ -126,6 +132,33 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
     const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
     return { url: urlData.publicUrl, type: customType || file.type, name: file.name };
   }, [user]);
+
+  const toggleSelectMsg = useCallback((id: string) => {
+    setSelectedMsgs((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleForwardSelected = () => {
+    if (selectedMsgs.size === 0) return;
+    const msg = messages.find((m) => selectedMsgs.has(m.id));
+    if (msg) setForwardMsg({ content: msg.content, fileUrl: msg.file_url || undefined, fileType: msg.file_type || undefined, fileName: msg.file_name || undefined });
+    setSelectedMsgs(new Set());
+  };
+
+  const handleDeleteSelected = async () => {
+    for (const id of selectedMsgs) await onDeleteMessage?.(id);
+    setSelectedMsgs(new Set());
+  };
+
+  const handleForwardSend = () => {
+    if (!forwardMsg || forwardTargets.size === 0) return;
+    onForward?.(forwardMsg.content, forwardMsg.fileUrl, forwardMsg.fileType, forwardMsg.fileName, Array.from(forwardTargets));
+    setForwardMsg(null);
+    setForwardTargets(new Set());
+  };
 
   const handleSend = async (scheduledFor?: Date) => {
     if (!input.trim() && !selectedFile) return;
@@ -291,6 +324,64 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
         <ImageCropper src={cropSrc} onCrop={handleCroppedImage} onCancel={() => { setCropSrc(null); setCropFile(null); }} />
       )}
 
+      {/* Multi-select toolbar */}
+      <AnimatePresence>
+        {selectedMsgs.size > 0 && (
+          <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
+            className="px-4 py-2 bg-primary/10 border-b border-primary/20 flex items-center gap-3 shrink-0">
+            <span className="text-xs font-semibold text-primary flex-1">{selectedMsgs.size} selected</span>
+            <button onClick={handleForwardSelected} className="flex items-center gap-1.5 text-xs text-primary hover:opacity-80">
+              <Forward className="h-3.5 w-3.5" />Forward
+            </button>
+            <button onClick={handleDeleteSelected} className="flex items-center gap-1.5 text-xs text-destructive hover:opacity-80">
+              <Trash2 className="h-3.5 w-3.5" />Delete
+            </button>
+            <button onClick={() => setSelectedMsgs(new Set())} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Forward modal */}
+      <AnimatePresence>
+        {forwardMsg && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+            onClick={() => setForwardMsg(null)}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              className="bg-card rounded-2xl w-full max-w-sm shadow-2xl border border-border p-4"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-foreground">Forward to...</span>
+                <button onClick={() => setForwardMsg(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+              </div>
+              <p className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2 mb-3 truncate">{forwardMsg.content}</p>
+              <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
+                {allChats.filter((c) => c.id !== chat.id).map((c) => (
+                  <button key={c.id}
+                    onClick={() => setForwardTargets((prev) => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-colors ${
+                      forwardTargets.has(c.id) ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+                    }`}>
+                    <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                      forwardTargets.has(c.id) ? "bg-primary border-primary" : "border-muted-foreground/40"
+                    }`}>
+                      {forwardTargets.has(c.id) && <CheckSquare className="h-3 w-3 text-white" />}
+                    </div>
+                    {c.displayName}
+                  </button>
+                ))}
+              </div>
+              <button onClick={handleForwardSend} disabled={forwardTargets.size === 0}
+                className="w-full gradient-primary text-primary-foreground rounded-xl py-2 text-sm font-semibold disabled:opacity-40">
+                Forward to {forwardTargets.size > 0 ? `${forwardTargets.size} chat${forwardTargets.size > 1 ? "s" : ""}` : "..."}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Pinned message banner */}
       {pinnedText && (
         <div className="px-4 py-2 bg-primary/5 border-b border-border flex items-center gap-2 shrink-0">
@@ -434,6 +525,8 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
               <MessageBubble
                 key={msg.id}
                 showDate={showDate}
+                selected={selectedMsgs.has(msg.id)}
+                onSelect={selectedMsgs.size > 0 ? toggleSelectMsg : undefined}
                 message={{
                   id: msg.id,
                   senderId: msg.sender_id,
@@ -454,6 +547,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
                 onDelete={() => onDeleteMessage?.(msg.id)}
                 onReact={onReact ? (emoji) => onReact(msg.id, emoji) : undefined}
                 onPin={onPin ? () => onPin(msg.id, msg.content) : undefined}
+                onForward={() => setForwardMsg({ content: msg.content, fileUrl: msg.file_url || undefined, fileType: msg.file_type || undefined, fileName: msg.file_name || undefined })}
               />
             );
           })}

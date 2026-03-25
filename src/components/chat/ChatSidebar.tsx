@@ -322,6 +322,19 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab("archived")}
+          className={`flex-1 text-xs py-2 font-medium transition-colors flex items-center justify-center gap-1 ${
+            activeTab === "archived" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-sidebar-foreground"
+          }`}
+        >
+          Archived
+          {archivedChats.length > 0 && (
+            <span className="h-4 min-w-[16px] px-1 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center">
+              {archivedChats.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Chat List */}

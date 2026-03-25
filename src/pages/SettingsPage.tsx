@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Loader2, LogOut, Image, User, Bell, Palette, Shield, ChevronRight } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, LogOut, Image, User, Bell, Palette, Shield, ChevronRight, Moon, Sun } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -253,8 +253,9 @@ const SettingsPage = () => {
                     <div className="flex gap-3">
                       {(["dark", "light"] as const).map((m) => (
                         <button key={m} onClick={() => setMode(m)}
-                          className={`flex-1 py-3 rounded-xl text-sm font-medium capitalize transition-all border-2 ${mode === m ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                          {m === "dark" ? "🌙 Dark" : "☀️ Light"}
+                          className={`flex-1 py-3 rounded-xl text-sm font-medium capitalize transition-all border-2 flex items-center justify-center gap-2 ${mode === m ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+                          {m === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                          {m === "dark" ? "Dark" : "Light"}
                         </button>
                       ))}
                     </div>

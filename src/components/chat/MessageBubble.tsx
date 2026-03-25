@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, CheckCheck, FileText, Download, Play, Pause, Phone, Video, Reply, X, Pencil, Trash2, Copy, Pin, SmilePlus } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Play, Pause, Phone, Video, Reply, X, Pencil, Trash2, Copy, Pin, SmilePlus, Forward } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 
 interface Reaction { emoji: string; count: number; mine: boolean; }
@@ -23,11 +23,14 @@ interface MessageData {
 interface MessageBubbleProps {
   message: MessageData;
   isMine: boolean;
+  selected?: boolean;
+  onSelect?: (msgId: string) => void;
   onReply?: (msg: MessageData) => void;
   onEdit?: (msg: MessageData) => void;
   onDelete?: (msgId: string) => void;
   onReact?: (msgId: string, emoji: string) => void;
   onPin?: (msgId: string, text: string) => void;
+  onForward?: (msg: MessageData) => void;
   showDate?: boolean;
 }
 
@@ -140,7 +143,7 @@ export const DateSeparator = ({ date }: { date: Date }) => (
   </div>
 );
 
-const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, onPin, showDate }: MessageBubbleProps) => {
+const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, onDelete, onReact, onPin, onForward, showDate }: MessageBubbleProps) => {
   const [lightbox, setLightbox] = useState(false);
   const [showReactPicker, setShowReactPicker] = useState(false);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,6 +162,7 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
   const hasCode = contentParts.some((p) => p.type === "code");
 
   const handleTap = useCallback(() => {
+    if (onSelect) { onSelect(message.id); return; }
     tapCount.current += 1;
     if (tapCount.current === 1) {
       tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 300);
@@ -167,7 +171,7 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
       tapCount.current = 0;
       if (!isSystem && !isDeleted) onReply?.(message);
     }
-  }, [isSystem, isDeleted, onReply, message]);
+  }, [isSystem, isDeleted, onReply, message, onSelect]);
 
   if (isSystem) {
     return (
@@ -191,8 +195,9 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
         initial={{ opacity: 0, y: 8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.15, ease: [0.34, 1.56, 0.64, 1] }}
-        className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 py-0.5 group`}
-        onDoubleClick={() => !isDeleted && onReply?.(message)}
+        className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 py-0.5 group transition-colors ${selected ? "bg-primary/10" : ""}`}
+        onDoubleClick={() => !isDeleted && !onSelect && onReply?.(message)}
+        onLongPress={() => onSelect?.(message.id)}
         onClick={handleTap}
       >
         <div className="flex flex-col max-w-[72%]">
@@ -214,8 +219,8 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
           }`}>
 
             {/* Hover action buttons */}
-            {!isCall && !isDeleted && (
-              <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 ${isMine ? "-left-24" : "-right-24"}`}>
+            {!isCall && !isDeleted && !onSelect && (
+              <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 ${isMine ? "-left-28" : "-right-28"}`}>
                 {/* React button */}
                 <div className="relative">
                   <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
@@ -246,6 +251,11 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
                   <Reply className="h-3.5 w-3.5 text-muted-foreground" />
                 </motion.button>
                 <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
+                  onClick={(e) => { e.stopPropagation(); onForward?.(message); }}
+                  className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
+                  <Forward className="h-3.5 w-3.5 text-muted-foreground" />
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); onPin?.(message.id, message.text); }}
                   className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
                   <Pin className="h-3.5 w-3.5 text-muted-foreground" />
@@ -264,6 +274,16 @@ const MessageBubble = ({ message, isMine, onReply, onEdit, onDelete, onReact, on
                     </motion.button>
                   </>
                 )}
+              </div>
+            )}
+            {/* Multi-select checkbox */}
+            {onSelect && (
+              <div className={`absolute ${isMine ? "-left-7" : "-right-7"} top-1/2 -translate-y-1/2`}>
+                <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  selected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-card"
+                }`}>
+                  {selected && <Check className="h-3 w-3 text-white" />}
+                </div>
               </div>
             )}
 

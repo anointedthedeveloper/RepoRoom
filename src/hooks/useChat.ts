@@ -57,8 +57,9 @@ export interface EnrichedChatRoom extends ChatRoom {
   otherMemberStatus?: string;
   onlineCount?: number;
   currentUserRole?: string | null;
-  isPending: boolean;  // true if this DM is awaiting acceptance
-  isRequester: boolean; // true if current user sent the request
+  isPending: boolean;
+  isRequester: boolean;
+  isArchived: boolean;
 }
 
 export function useChat() {
@@ -112,7 +113,7 @@ export function useChat() {
     const allUserIds = [...new Set(allMemberRows.map((m) => m.user_id))];
 
     const [profilesRes, lastMsgsRes] = await Promise.all([
-      supabase.from("profiles").select("id, username, display_name, avatar_url, status, last_seen").in("id", allUserIds),
+      supabase.from("profiles").select("id, username, display_name, avatar_url, status, last_seen, bio").in("id", allUserIds),
       supabase.from("messages").select("*").in("chat_room_id", roomIds).order("created_at", { ascending: false }),
     ]);
 
@@ -141,6 +142,7 @@ export function useChat() {
 
       const isPending = !room.is_group && (room as any).status === "pending";
       const isRequester = isPending && room.created_by === user.id;
+      const isArchived = (room as any).is_archived === true;
 
       return {
         ...room,
@@ -155,6 +157,7 @@ export function useChat() {
         currentUserRole,
         isPending,
         isRequester,
+        isArchived,
       };
     });
 
@@ -412,6 +415,31 @@ export function useChat() {
     await fetchChatRooms();
   }, [fetchChatRooms]);
 
+  const clearChat = useCallback(async (chatRoomId: string) => {
+    await supabase.from("messages").delete().eq("chat_room_id", chatRoomId);
+    setMessages([]);
+    await fetchChatRooms();
+  }, [fetchChatRooms]);
+
+  const archiveChat = useCallback(async (chatRoomId: string, archive: boolean) => {
+    await supabase.from("chat_rooms").update({ is_archived: archive } as any).eq("id", chatRoomId);
+    await fetchChatRooms();
+  }, [fetchChatRooms]);
+
+  const forwardMessage = useCallback(async (content: string, fileUrl: string | undefined, fileType: string | undefined, fileName: string | undefined, targetRoomIds: string[]) => {
+    if (!user) return;
+    await Promise.all(targetRoomIds.map((roomId) =>
+      supabase.from("messages").insert({
+        chat_room_id: roomId,
+        sender_id: user.id,
+        content,
+        file_url: fileUrl || null,
+        file_type: fileType || null,
+        file_name: fileName || null,
+      })
+    ));
+  }, [user]);
+
   const editMessage = useCallback(
     async (messageId: string, newText: string) => {
       await supabase.from("messages").update({ content: newText, is_edited: true } as any).eq("id", messageId);
@@ -573,5 +601,6 @@ export function useChat() {
     editMessage, deleteMessage, sendSystemMessage,
     toggleReaction, pinMessage, unpinMessage,
     loading, fetchChatRooms, isOtherTyping, sendTyping,
+    clearChat, archiveChat, forwardMessage,
   };
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil, ZoomIn, Shield, ShieldOff, Trash2, LogOut } from "lucide-react";
+import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil, ZoomIn, Shield, ShieldOff, Trash2, LogOut, Archive, ArchiveX, Eraser } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarBubble from "./AvatarBubble";
 import ImageCropper from "./ImageCropper";
@@ -35,6 +35,8 @@ interface UserProfilePanelProps {
   onClose: () => void;
   onStartCall: (type: "audio" | "video") => void;
   onRefresh?: () => void;
+  onClearChat?: (chatRoomId: string) => Promise<void>;
+  onArchiveChat?: (chatRoomId: string, archive: boolean) => Promise<void>;
   onRemoveMember?: (chatRoomId: string, userId: string, displayName: string) => Promise<void>;
   onLeaveGroup?: (chatRoomId: string, displayName: string) => Promise<void>;
   onPromoteToAdmin?: (chatRoomId: string, userId: string, displayName: string) => Promise<void>;
@@ -53,7 +55,7 @@ const RoleBadge = ({ role }: { role: string | null | undefined }) => {
   );
 };
 
-const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemoveMember, onLeaveGroup, onPromoteToAdmin, onDemoteAdmin, onSendSystemMessage }: UserProfilePanelProps) => {
+const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onClearChat, onArchiveChat, onRemoveMember, onLeaveGroup, onPromoteToAdmin, onDemoteAdmin, onSendSystemMessage }: UserProfilePanelProps) => {
   const { user } = useAuth();
   const otherMember = chat.members.find((m) => m.user_id !== user?.id);
   const profile = otherMember?.profiles;
@@ -78,6 +80,8 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
   const [iconError, setIconError] = useState<string | null>(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [leavingGroup, setLeavingGroup] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
+  const [archivingChat, setArchivingChat] = useState(false);
   const iconRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -211,6 +215,20 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
     setDeletingGroup(false);
     onClose();
     onRefresh?.();
+  };
+
+  const handleClearChat = async () => {
+    if (!window.confirm("Clear all messages in this chat? This cannot be undone.")) return;
+    setClearingChat(true);
+    await onClearChat?.(chat.id);
+    setClearingChat(false);
+  };
+
+  const handleArchiveToggle = async () => {
+    setArchivingChat(true);
+    await onArchiveChat?.(chat.id, !chat.isArchived);
+    setArchivingChat(false);
+    onClose();
   };
 
   const filteredUsers = allUsers.filter((u) =>
@@ -455,6 +473,19 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Clear + Archive */}
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={handleClearChat} disabled={clearingChat}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-2 transition-colors border border-border">
+                      <Eraser className="h-3.5 w-3.5" />{clearingChat ? "Clearing..." : "Clear Chat"}
+                    </button>
+                    <button onClick={handleArchiveToggle} disabled={archivingChat}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl py-2 transition-colors border border-border">
+                      {chat.isArchived ? <ArchiveX className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      {archivingChat ? "..." : chat.isArchived ? "Unarchive" : "Archive"}
+                    </button>
                   </div>
 
                   {/* Leave group */}
