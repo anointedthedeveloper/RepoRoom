@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useGithub } from "@/hooks/useGithub";
+import type { GithubCommit } from "@/hooks/useGithub";
 import AvatarBubble from "@/components/chat/AvatarBubble";
 
 const DEV_STATUS_COLORS: Record<string, string> = {
@@ -18,26 +19,25 @@ const DashboardPage = () => {
   const { user, profile } = useAuth();
   const { workspaces, activeWorkspace, members, tasks, channels, selectWorkspace } = useWorkspace();
   const { repos, githubUser, fetchRepos, fetchCommits } = useGithub();
-  const [recentCommits, setRecentCommits] = useState<any[]>([]);
+  const [recentCommits, setRecentCommits] = useState<GithubCommit[]>([]);
   const [stats, setStats] = useState({ messages: 0, chats: 0, calls: 0 });
-  const [recentChats, setRecentChats] = useState<any[]>([]);
 
   // Auto-select first workspace
   useEffect(() => {
     if (workspaces.length > 0 && !activeWorkspace) selectWorkspace(workspaces[0]);
-  }, [workspaces, activeWorkspace]);
+  }, [workspaces, activeWorkspace, selectWorkspace]);
 
   // Fetch GitHub commits for first repo
   useEffect(() => {
     if (githubUser) fetchRepos();
-  }, [githubUser]);
+  }, [githubUser, fetchRepos]);
 
   useEffect(() => {
     if (repos.length > 0) {
       const [owner, repo] = repos[0].full_name.split("/");
       fetchCommits(owner, repo).then(setRecentCommits);
     }
-  }, [repos]);
+  }, [repos, fetchCommits]);
 
   // Fetch chat stats
   useEffect(() => {
@@ -53,8 +53,7 @@ const DashboardPage = () => {
     supabase.from("chat_members").select("chat_room_id").eq("user_id", user.id).then(async ({ data }) => {
       if (!data?.length) return;
       const roomIds = data.map(r => r.chat_room_id);
-      const { data: rooms } = await supabase.from("chat_rooms").select("id, name, is_group").in("id", roomIds).limit(5);
-      setRecentChats(rooms || []);
+      await supabase.from("chat_rooms").select("id, name, is_group").in("id", roomIds).limit(5);
     });
   }, [user]);
 
