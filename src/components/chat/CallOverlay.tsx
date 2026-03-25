@@ -16,6 +16,7 @@ interface CallOverlayProps {
   isScreenSharing?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  remoteVideoOff?: boolean;
   onAccept: () => void;
   onEnd: () => void;
   onReject: () => void;
@@ -37,7 +38,7 @@ function attachStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: Me
 const CallOverlay = ({
   callState, callType, remoteUsername, remoteAvatarUrl, localAvatarUrl, localUsername,
   localStream, remoteStream, callDuration, isScreenSharing,
-  isMuted = false, isVideoOff = false,
+  isMuted = false, isVideoOff = false, remoteVideoOff = false,
   onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
   const mainVideoRef     = useRef<HTMLVideoElement>(null);
@@ -46,9 +47,8 @@ const CallOverlay = ({
   const remoteAudioRef   = useRef<HTMLAudioElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
 
-  const [swapped,           setSwapped]           = useState(false);
-  const [remoteVideoActive, setRemoteVideoActive] = useState(false);
-  const [prevState,         setPrevState]         = useState(callState);
+  const [swapped,   setSwapped]   = useState(false);
+  const [prevState, setPrevState] = useState(callState);
 
   // Sound effects on state transitions
   useEffect(() => {
@@ -96,22 +96,8 @@ const CallOverlay = ({
     };
   }, [callState, callType]);
 
-  // Track remote video active state
-  useEffect(() => {
-    if (!remoteStream) { setRemoteVideoActive(false); return; }
-    const vt = remoteStream.getVideoTracks()[0];
-    if (!vt) { setRemoteVideoActive(false); return; }
-    const update = () => setRemoteVideoActive(vt.enabled && vt.readyState === "live");
-    update();
-    vt.addEventListener("mute", update);
-    vt.addEventListener("unmute", update);
-    vt.addEventListener("ended", update);
-    return () => {
-      vt.removeEventListener("mute", update);
-      vt.removeEventListener("unmute", update);
-      vt.removeEventListener("ended", update);
-    };
-  }, [remoteStream]);
+  // Track remote video active state via remoteVideoOff prop (signalled explicitly)
+  const remoteVideoActive = !remoteVideoOff;
 
   const handleSwap = useCallback(() => setSwapped((s) => !s), []);
 

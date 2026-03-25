@@ -28,7 +28,7 @@ const ChatPage = () => {
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
-    callDuration, isScreenSharing, isMuted, isVideoOff,
+    callDuration, isScreenSharing, isMuted, isVideoOff, remoteVideoOff,
     startCall, startGroupCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, startScreenShare, stopScreenShare,
   } = useWebRTC();
@@ -243,6 +243,7 @@ const ChatPage = () => {
             onToggleVideo={toggleVideo}
             isMuted={isMuted}
             isVideoOff={isVideoOff}
+            remoteVideoOff={remoteVideoOff}
             onStartScreenShare={startScreenShare}
             onStopScreenShare={stopScreenShare}
           />

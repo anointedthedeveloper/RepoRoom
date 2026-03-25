@@ -27,7 +27,7 @@ const ICE_SERVERS = [
 type CallState = "idle" | "calling" | "receiving" | "connected";
 
 export interface CallSignal {
-  type: "offer" | "answer" | "ice-candidate" | "end-call" | "reject-call";
+  type: "offer" | "answer" | "ice-candidate" | "end-call" | "reject-call" | "video-toggle";
   from: string;
   to: string;
   data?: any;
@@ -145,6 +145,7 @@ export function useWebRTC() {
     setCallState("idle");
     setRemoteUserId(null);
     setIsScreenSharing(false);
+    setRemoteVideoOff(false);
     remoteUserIdRef.current = null;
     chatRoomIdRef.current = null;
     callStartTimeRef.current = 0;
@@ -368,8 +369,9 @@ export function useWebRTC() {
     cleanup("ended");
   }, [sendSignal, cleanup]);
 
-  const [isMuted,    setIsMuted]    = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isMuted,       setIsMuted]       = useState(false);
+  const [isVideoOff,    setIsVideoOff]    = useState(false);
+  const [remoteVideoOff, setRemoteVideoOff] = useState(false);
 
   const toggleMute = useCallback(() => {
     localStreamRef.current?.getAudioTracks().forEach((t) => {
@@ -382,8 +384,11 @@ export function useWebRTC() {
     localStreamRef.current?.getVideoTracks().forEach((t) => {
       t.enabled = !t.enabled;
       setIsVideoOff(!t.enabled);
+      // Notify the remote peer so they can show our avatar
+      const rid = remoteUserIdRef.current;
+      if (rid) sendSignal({ type: "video-toggle", to: rid, data: { videoOff: !t.enabled } });
     });
-  }, []);
+  }, [sendSignal]);
 
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
     const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
@@ -495,6 +500,10 @@ export function useWebRTC() {
             case "reject-call":
               cleanup("rejected");
               break;
+
+            case "video-toggle":
+              setRemoteVideoOff(signal.data?.videoOff === true);
+              break;
           }
 
           await supabase.from("call_signals").delete().eq("id", row.id);
@@ -517,7 +526,7 @@ export function useWebRTC() {
   return {
     callState, callType, remoteUserId, remoteUsername,
     localStream, remoteStream, callDuration, isScreenSharing,
-    isMuted, isVideoOff,
+    isMuted, isVideoOff, remoteVideoOff,
     startCall, startGroupCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, replaceVideoTrack, startScreenShare, stopScreenShare,
   };
