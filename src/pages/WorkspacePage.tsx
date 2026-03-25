@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2 } from "lucide-react";
+import { Hash, Send, Smile, X, Users, UserPlus, MessageSquare, Github, LayoutDashboard, Link2, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,9 +35,9 @@ const WorkspacePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    workspaces, activeWorkspace, channels, members, tasks, loading,
+    workspaces, activeWorkspace, channels, members, tasks, projectFiles, loading,
     selectWorkspace, createWorkspace, joinWorkspace, createChannel,
-    setDevStatus, createTask, updateTaskStatus, projects, createProject, updateProjectStatus, addMember,
+    setDevStatus, createTask, updateTaskStatus, projects, createProject, updateProjectStatus, updateProjectRepo, addMember, importProjectFile,
   } = useWorkspace();
   const { token: githubToken, createIssue } = useGithub();
   const {
@@ -61,6 +61,8 @@ const WorkspacePage = () => {
   const [showCreateWs, setShowCreateWs] = useState(false);
   const [showJoinWs, setShowJoinWs] = useState(false);
   const [showCreateCh, setShowCreateCh] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAddPeople, setShowAddPeople] = useState(false);
   const [wsName, setWsName] = useState("");
   const [wsDesc, setWsDesc] = useState("");
@@ -243,8 +245,21 @@ const WorkspacePage = () => {
 
   return (
     <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30 bg-black/55 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
       {/* Sidebar */}
-      <div className="w-72 shrink-0 border-r border-border/60 bg-sidebar/95 backdrop-blur-xl">
+      <div className={`fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-border/60 bg-sidebar/95 backdrop-blur-xl transition-transform duration-300 lg:relative ${
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      } ${sidebarCollapsed ? "lg:w-[88px]" : "lg:w-72"}`}>
         <WorkspaceSidebar
           workspaces={workspaces}
           activeWorkspace={activeWorkspace}
@@ -270,6 +285,12 @@ const WorkspacePage = () => {
         {/* Channel header */}
         {activeChannel ? (
           <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 backdrop-blur-sm flex items-center gap-3 shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <button onClick={() => setSidebarOpen(true)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors lg:hidden">
+              <Menu className="h-4 w-4" />
+            </button>
+            <button onClick={() => setSidebarCollapsed((value) => !value)} className="hidden lg:flex h-8 w-8 rounded-lg items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
             <button onClick={() => navigate("/")} title="Back to chats"
               className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
               <MessageSquare className="h-4 w-4" />
@@ -292,6 +313,10 @@ const WorkspacePage = () => {
             <button onClick={() => navigate("/dashboard")} title="Dashboard"
               className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
               <LayoutDashboard className="h-4 w-4" />
+            </button>
+            <button onClick={() => navigate("/settings")} title="Settings"
+              className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+              <Settings className="h-4 w-4" />
             </button>
             <button onClick={() => setShowGithub(v => !v)}
               title="GitHub"
@@ -327,9 +352,10 @@ const WorkspacePage = () => {
                 </p>
               </div>
               {activeWorkspace && (
-                <div className="hidden md:flex items-center gap-2 text-[11px]">
+                <div className="hidden lg:flex items-center gap-2 text-[11px]">
                   <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-muted-foreground">{members.length} members</span>
                   <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-muted-foreground">{tasks.filter((task) => task.status !== "done").length} open tasks</span>
+                  <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-muted-foreground">{projectFiles.length} imported files</span>
                 </div>
               )}
             </div>
@@ -444,8 +470,10 @@ const WorkspacePage = () => {
                 <ProjectsPanel
                   projects={projects}
                   linkedRepos={linkedRepos.map((repo) => repo.repo_full_name)}
+                  projectFiles={projectFiles}
                   onCreateProject={(name, description, linkedRepoFullName) => createProject(activeWorkspace.id, name, description, linkedRepoFullName)}
                   onUpdateStatus={(projectId, status) => updateProjectStatus(projectId, status, activeWorkspace.id)}
+                  onUpdateRepo={(projectId, linkedRepoFullName) => updateProjectRepo(projectId, linkedRepoFullName, activeWorkspace.id)}
                   onClose={() => setShowProjects(false)}
                 />
               </motion.div>
@@ -479,6 +507,12 @@ const WorkspacePage = () => {
                   owner={fileBrowserRepo.owner}
                   repo={fileBrowserRepo.repo}
                   defaultBranch={fileBrowserRepo.branch}
+                  projects={projects}
+                  onImportToProject={async (projectId, repoFullName, branchName, filePath, fileSha) => {
+                    const result = await importProjectFile(activeWorkspace.id, projectId, repoFullName, branchName, filePath, fileSha);
+                    if (result.ok) toast.success("File imported to project");
+                    else toast.error(result.error || "Could not import file");
+                  }}
                   onClose={() => { setShowFileBrowser(false); setFileBrowserRepo(null); }}
                 />
               </motion.div>

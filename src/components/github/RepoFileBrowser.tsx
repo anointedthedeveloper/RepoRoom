@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Eye, ExternalLink, FileText, Folder, FolderOpen, GitCommit, Maximize2, Minimize2, Pencil, Play, Save, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Download, Eye, ExternalLink, FileText, Folder, FolderOpen, GitCommit, Maximize2, Menu, Minimize2, Pencil, Play, Save, TerminalSquare, X } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import { useGithub } from "@/hooks/useGithub";
+import type { WorkspaceProject } from "@/hooks/useWorkspace";
 
 interface TreeNode {
   path: string;
@@ -35,6 +36,8 @@ interface Props {
   owner: string;
   repo: string;
   defaultBranch: string;
+  projects?: WorkspaceProject[];
+  onImportToProject?: (projectId: string, repoFullName: string, branchName: string, filePath: string, fileSha?: string | null) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -88,7 +91,7 @@ const previewDoc = (path: string, content: string) => {
   return "";
 };
 
-const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
+const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportToProject, onClose }: Props) => {
   const { token, commitFile } = useGithub();
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -106,7 +109,9 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
   const [branches, setBranches] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"code" | "preview" | "split">("code");
   const [fullscreen, setFullscreen] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   const [consoleInput, setConsoleInput] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [previewNonce, setPreviewNonce] = useState(0);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([
     { id: "boot", kind: "info", text: "Sandbox ready. Commands: help, run, preview, info, clear" },
@@ -222,6 +227,12 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
     setCommitting(false);
   };
 
+  const handleImportToProject = async () => {
+    if (!selectedFile || !selectedProjectId || !onImportToProject) return;
+    await onImportToProject(selectedProjectId, `${owner}/${repo}`, branch, selectedFile.path, fileSha || selectedFile.sha);
+    pushConsole("info", `Imported ${selectedFile.path} to project`);
+  };
+
   const runConsoleCommand = () => {
     const command = consoleInput.trim();
     if (!command) return;
@@ -300,6 +311,9 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
     <div className={fullscreen ? "fixed inset-0 z-50 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]" : "h-full w-[980px] border-l border-border bg-background shrink-0"}>
       <div className="h-full flex flex-col">
         <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2 bg-card/85 backdrop-blur-xl">
+          <button onClick={() => setShowSidebar((value) => !value)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground">
+            <Menu className="h-4 w-4" />
+          </button>
           <svg className="h-4 w-4 text-foreground shrink-0" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{owner}/{repo}</p>
@@ -314,7 +328,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-64 shrink-0 border-r border-border/70 bg-card/50 overflow-y-auto py-2 px-1">
+          <div className={`${showSidebar ? "flex w-64" : "hidden"} shrink-0 border-r border-border/70 bg-card/50 overflow-y-auto py-2 px-1 md:flex`}>
             {loading ? <p className="text-xs text-muted-foreground text-center py-4">Loading files...</p> : renderTree()}
           </div>
 
@@ -331,6 +345,28 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, onClose }: Props) => {
                   <button onClick={() => { navigator.clipboard.writeText(currentContent); setCopied(true); setTimeout(() => setCopied(false), 1200); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">{copied ? "Copied" : <><Copy className="h-3.5 w-3.5" />Copy</>}</button>
                   <button onClick={runFile} className="flex items-center gap-1 text-xs text-primary hover:opacity-80"><Play className="h-3.5 w-3.5" />Run</button>
                   {token && <button onClick={() => setEditing((value) => !value)} className="flex items-center gap-1 text-xs text-primary hover:opacity-80"><Pencil className="h-3.5 w-3.5" />{editing ? "Preview edits" : "Edit"}</button>}
+                  {projects.length > 0 && onImportToProject && (
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-background/70 px-2 py-1">
+                      <select
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                        className="bg-transparent text-[11px] text-foreground outline-none"
+                      >
+                        <option value="">Add to project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>{project.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleImportToProject}
+                        disabled={!selectedProjectId}
+                        className="flex items-center gap-1 text-[11px] text-primary disabled:opacity-40"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Import
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {editing && editContent !== fileContent && (
