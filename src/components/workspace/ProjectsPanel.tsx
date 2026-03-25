@@ -1,13 +1,15 @@
-import { useState } from "react";
-import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2, Download, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { WorkspaceProject } from "@/hooks/useWorkspace";
+import type { WorkspaceProject, WorkspaceProjectFile } from "@/hooks/useWorkspace";
 
 interface Props {
   projects: WorkspaceProject[];
   linkedRepos: string[];
+  projectFiles: WorkspaceProjectFile[];
   onCreateProject: (name: string, description?: string, linkedRepoFullName?: string | null) => void;
   onUpdateStatus: (projectId: string, status: WorkspaceProject["status"]) => void;
+  onUpdateRepo: (projectId: string, linkedRepoFullName: string | null) => void;
   onClose: () => void;
 }
 
@@ -18,10 +20,17 @@ const STATUS_CONFIG = {
   shipped: { label: "Shipped", icon: CheckCircle2, color: "text-primary", badge: "bg-primary/10 text-primary" },
 };
 
-const ProjectsPanel = ({ projects, linkedRepos, onCreateProject, onUpdateStatus, onClose }: Props) => {
+const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, onUpdateStatus, onUpdateRepo, onClose }: Props) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [linkedRepo, setLinkedRepo] = useState("");
+  const filesByProject = useMemo(() => {
+    return projectFiles.reduce<Record<string, WorkspaceProjectFile[]>>((acc, file) => {
+      if (!acc[file.project_id]) acc[file.project_id] = [];
+      acc[file.project_id].push(file);
+      return acc;
+    }, {});
+  }, [projectFiles]);
 
   const handleCreate = () => {
     if (!name.trim()) return;
@@ -101,6 +110,40 @@ const ProjectsPanel = ({ projects, linkedRepos, onCreateProject, onUpdateStatus,
                       <Link2 className="h-3 w-3" />
                       {project.linked_repo_full_name}
                     </span>
+                  )}
+                  {!!filesByProject[project.id]?.length && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground flex items-center gap-1">
+                      <Download className="h-3 w-3" />
+                      {filesByProject[project.id].length} imported
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <select
+                    value={project.linked_repo_full_name || ""}
+                    onChange={(e) => onUpdateRepo(project.id, e.target.value || null)}
+                    className="w-full bg-muted text-[11px] text-foreground rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">No linked repo</option>
+                    {linkedRepos.map((repo) => (
+                      <option key={`${project.id}-${repo}`} value={repo}>{repo}</option>
+                    ))}
+                  </select>
+                  {!!filesByProject[project.id]?.length && (
+                    <div className="rounded-xl border border-border bg-muted/30 p-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Imported files</p>
+                      <div className="mt-2 space-y-1.5">
+                        {filesByProject[project.id].slice(0, 3).map((file) => (
+                          <div key={file.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{file.file_path}</span>
+                          </div>
+                        ))}
+                        {filesByProject[project.id].length > 3 && (
+                          <p className="text-[10px] text-muted-foreground">+{filesByProject[project.id].length - 3} more files</p>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2">
