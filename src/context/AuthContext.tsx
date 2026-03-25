@@ -48,45 +48,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data) setProfile(data as Profile);
   };
 
-  const updatePresence = async (status: "online" | "offline") => {
-    if (!user) return;
+  const updatePresence = async (userId: string, status: "online" | "offline") => {
     await supabase
       .from("profiles")
       .update({ status, last_seen: new Date().toISOString() })
-      .eq("id", user.id);
+      .eq("id", userId);
   };
 
   useEffect(() => {
+    // Single source of truth — onAuthStateChange fires INITIAL_SESSION on mount
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
-          await fetchProfile(session.user.id);
-          // Set online
-          setTimeout(() => updatePresence("online"), 100);
+          // Use setTimeout to avoid Supabase deadlock on nested calls
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+            updatePresence(session.user.id, "online");
+          }, 0);
         } else {
           setProfile(null);
         }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        updatePresence("online");
-      }
-      setLoading(false);
-    });
-
-    // Set offline on unload
     const handleUnload = () => {
-      if (user) {
-        navigator.sendBeacon && updatePresence("offline");
-      }
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) updatePresence(session.user.id, "offline");
+      });
     };
     window.addEventListener("beforeunload", handleUnload);
 
@@ -114,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await updatePresence("offline");
+    if (user) await updatePresence(user.id, "offline");
     setUser(null);
     setProfile(null);
     setSession(null);
