@@ -5,11 +5,12 @@ import { useAuth } from "@/context/AuthContext";
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
 ];
 
 type CallState = "idle" | "calling" | "receiving" | "connected";
 
-interface CallSignal {
+export interface CallSignal {
   type: "offer" | "answer" | "ice-candidate" | "end-call" | "reject-call";
   from: string;
   to: string;
@@ -19,42 +20,30 @@ interface CallSignal {
   chatRoomId?: string;
 }
 
-// Generate ringtone using Web Audio API — no file needed
-function createRingtone(): { start: () => void; stop: () => void } {
-  let ctx: AudioContext | null = null;
-  let osc: OscillatorNode | null = null;
-  let gain: GainNode | null = null;
+function createRingtone() {
   let interval: ReturnType<typeof setInterval> | null = null;
 
   const ring = () => {
-    ctx = new AudioContext();
-    gain = ctx.createGain();
-    gain.gain.value = 0.3;
-    gain.connect(ctx.destination);
-
-    const play = (freq: number, start: number, dur: number) => {
-      osc = ctx!.createOscillator();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      osc.connect(gain!);
-      osc.start(ctx!.currentTime + start);
-      osc.stop(ctx!.currentTime + start + dur);
-    };
-    play(880, 0, 0.15);
-    play(1100, 0.2, 0.15);
-    play(880, 0.4, 0.15);
+    try {
+      const ctx = new AudioContext();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.25;
+      gain.connect(ctx.destination);
+      [[880, 0, 0.15], [1100, 0.2, 0.15], [880, 0.4, 0.15]].forEach(([freq, start, dur]) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur);
+      });
+      setTimeout(() => ctx.close(), 1500);
+    } catch {}
   };
 
   return {
-    start: () => {
-      ring();
-      interval = setInterval(ring, 3000);
-    },
-    stop: () => {
-      if (interval) { clearInterval(interval); interval = null; }
-      try { ctx?.close(); } catch {}
-      ctx = null; osc = null; gain = null;
-    },
+    start: () => { ring(); interval = setInterval(ring, 3000); },
+    stop: () => { if (interval) { clearInterval(interval); interval = null; } },
   };
 }
 
@@ -67,7 +56,6 @@ export function useWebRTC() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
-  const [activeChatRoomId, setActiveChatRoomId] = useState<string | null>(null);
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const remoteUserIdRef = useRef<string | null>(null);
@@ -77,9 +65,12 @@ export function useWebRTC() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const ringtoneRef = useRef(createRingtone());
   const callTypeRef = useRef<"audio" | "video">("audio");
+  const callStateRef = useRef<CallState>("idle"); // ref to avoid stale closure
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
 
-  // Send a call status message into the chat
+  // Keep ref in sync
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+
   const sendCallMessage = useCallback(async (roomId: string, text: string, type: "call/audio" | "call/video") => {
     if (!user || !roomId) return;
     await supabase.from("messages").insert({
@@ -93,33 +84,23 @@ export function useWebRTC() {
 
   const cleanup = useCallback((status?: "ended" | "missed" | "rejected" | "no-answer") => {
     ringtoneRef.current.stop();
+    peerConnection.current?.close();
+    peerConnection.current = null;
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    // Send call indicator message
     const roomId = chatRoomIdRef.current;
     if (roomId && status) {
-      const dur = callStartTimeRef.current
-        ? Math.round((Date.now() - callStartTimeRef.current) / 1000)
-        : 0;
+      const dur = callStartTimeRef.current ? Math.round((Date.now() - callStartTimeRef.current) / 1000) : 0;
       const type = callTypeRef.current === "video" ? "call/video" : "call/audio";
-      let text = "";
-      if (status === "ended") text = `Call ended · ${dur < 60 ? `${dur}s` : `${Math.floor(dur / 60)}m ${dur % 60}s`}`;
-      else if (status === "missed") text = "Missed call";
-      else if (status === "rejected") text = "Call declined";
-      else if (status === "no-answer") text = "No answer";
-      if (text) sendCallMessage(roomId, text, type);
+      const texts: Record<string, string> = {
+        ended: `Call ended · ${dur < 60 ? `${dur}s` : `${Math.floor(dur / 60)}m ${dur % 60}s`}`,
+        missed: "Missed call",
+        rejected: "Call declined",
+        "no-answer": "No answer",
+      };
+      if (texts[status]) sendCallMessage(roomId, texts[status], type);
     }
 
     setLocalStream(null);
@@ -148,13 +129,10 @@ export function useWebRTC() {
 
   const createPeerConnection = useCallback((targetUserId: string) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
     pc.onicecandidate = (e) => {
       if (e.candidate) sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate });
     };
-
     pc.ontrack = (e) => setRemoteStream(e.streams[0]);
-
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") {
         ringtoneRef.current.stop();
@@ -165,16 +143,16 @@ export function useWebRTC() {
         cleanup("ended");
       }
     };
-
     peerConnection.current = pc;
     return pc;
   }, [sendSignal, cleanup]);
 
-  // Find or create DM room between two users for call messages
   const getOrCreateCallRoom = useCallback(async (otherUserId: string): Promise<string | null> => {
     if (!user) return null;
-    const { data: myRooms } = await supabase.from("chat_members").select("chat_room_id").eq("user_id", user.id);
-    const { data: theirRooms } = await supabase.from("chat_members").select("chat_room_id").eq("user_id", otherUserId);
+    const [{ data: myRooms }, { data: theirRooms }] = await Promise.all([
+      supabase.from("chat_members").select("chat_room_id").eq("user_id", user.id),
+      supabase.from("chat_members").select("chat_room_id").eq("user_id", otherUserId),
+    ]);
     if (myRooms && theirRooms) {
       const myIds = new Set(myRooms.map((r) => r.chat_room_id));
       const shared = theirRooms.find((r) => myIds.has(r.chat_room_id));
@@ -199,39 +177,29 @@ export function useWebRTC() {
     setRemoteUserId(targetUserId);
     remoteUserIdRef.current = targetUserId;
     setCallState("calling");
-
-    // Get chat room for call messages
-    const roomId = await getOrCreateCallRoom(targetUserId);
-    chatRoomIdRef.current = roomId;
-    setActiveChatRoomId(roomId);
-
-    // Start outgoing ringtone
     ringtoneRef.current.start();
 
-    // Background notification
-    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-      new Notification("Calling...", { body: `${type} call in progress`, icon: "/favicon.ico" });
-    }
+    const roomId = await getOrCreateCallRoom(targetUserId);
+    chatRoomIdRef.current = roomId;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
       localStreamRef.current = stream;
       setLocalStream(stream);
-
       const pc = createPeerConnection(targetUserId);
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       await sendSignal({ type: "offer", to: targetUserId, data: offer, callType: type, chatRoomId: roomId || undefined });
     } catch (err) {
-      console.error("Failed to start call:", err);
+      console.error("startCall failed:", err);
       cleanup("no-answer");
     }
   }, [user, createPeerConnection, sendSignal, cleanup, getOrCreateCallRoom]);
 
+  // acceptCall takes the stored signal directly — no window lookup needed
   const acceptCall = useCallback(async (signal: CallSignal) => {
-    if (!user) return;
+    if (!user || !signal.data) return;
     ringtoneRef.current.stop();
     const type = signal.callType || "audio";
     callTypeRef.current = type;
@@ -244,16 +212,19 @@ export function useWebRTC() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
       localStreamRef.current = stream;
       setLocalStream(stream);
-
       const pc = createPeerConnection(signal.from);
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+      // Flush any queued ICE candidates
+      for (const c of iceCandidateQueue.current) {
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+      }
+      iceCandidateQueue.current = [];
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await sendSignal({ type: "answer", to: signal.from, data: answer });
     } catch (err) {
-      console.error("Failed to accept call:", err);
+      console.error("acceptCall failed:", err);
       cleanup("ended");
     }
   }, [user, createPeerConnection, sendSignal, cleanup]);
@@ -278,13 +249,14 @@ export function useWebRTC() {
     localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
   }, []);
 
-  // Listen for incoming signals
+  // Single stable channel — no callState in deps
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
       .channel(`call-signals-${user.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "call_signals", filter: `to_user=eq.${user.id}` },
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "call_signals", filter: `to_user=eq.${user.id}` },
         async (payload) => {
           const row = payload.new as any;
           const signal: CallSignal = {
@@ -306,12 +278,9 @@ export function useWebRTC() {
               setCallType(signal.callType || "audio");
               setCallState("receiving");
               if (signal.chatRoomId) chatRoomIdRef.current = signal.chatRoomId;
+              // Store full signal for accept
               (window as any).__pendingCallSignal = signal;
-
-              // Play ringtone for incoming call
               ringtoneRef.current.start();
-
-              // Background notification
               if (document.hidden && "Notification" in window && Notification.permission === "granted") {
                 const n = new Notification(`Incoming ${signal.callType || "audio"} call`, {
                   body: `${signal.fromUsername} is calling you`,
@@ -325,7 +294,6 @@ export function useWebRTC() {
             case "answer":
               if (peerConnection.current) {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(signal.data));
-                // Flush queued ICE candidates
                 for (const c of iceCandidateQueue.current) {
                   await peerConnection.current.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
                 }
@@ -334,7 +302,7 @@ export function useWebRTC() {
               break;
 
             case "ice-candidate":
-              if (peerConnection.current && peerConnection.current.remoteDescription) {
+              if (peerConnection.current?.remoteDescription) {
                 await peerConnection.current.addIceCandidate(new RTCIceCandidate(signal.data)).catch(() => {});
               } else {
                 iceCandidateQueue.current.push(signal.data);
@@ -342,8 +310,8 @@ export function useWebRTC() {
               break;
 
             case "end-call":
-              // If we were calling and they ended = no answer; if connected = ended
-              if (callState === "calling") cleanup("no-answer");
+              // Use ref to avoid stale closure
+              if (callStateRef.current === "calling") cleanup("no-answer");
               else cleanup("ended");
               break;
 
@@ -358,9 +326,8 @@ export function useWebRTC() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, cleanup, callState]);
+  }, [user, cleanup]); // no callState dep — use callStateRef instead
 
-  // Keep screen awake during call using Wake Lock API
   useEffect(() => {
     if (callState === "idle") return;
     let wakeLock: any = null;

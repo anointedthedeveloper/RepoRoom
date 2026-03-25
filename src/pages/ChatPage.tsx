@@ -49,7 +49,10 @@ const ChatPage = () => {
 
   const handleAcceptCall = useCallback(() => {
     const signal = (window as any).__pendingCallSignal;
-    if (signal) { acceptCall(signal); delete (window as any).__pendingCallSignal; }
+    if (signal) {
+      acceptCall(signal);
+      // Don't delete — acceptCall handles it
+    }
   }, [acceptCall]);
 
   return (
