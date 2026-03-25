@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, MoreVertical } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, Menu, ChevronLeft, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,9 +28,12 @@ interface ChatPanelProps {
   onStartCall: (type: "audio" | "video") => void;
   onTyping?: () => void;
   isOtherTyping?: boolean;
+  onToggleSidebar?: () => void;
+  onToggleProfile?: () => void;
+  profileOpen?: boolean;
 }
 
-const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOtherTyping }: ChatPanelProps) => {
+const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOtherTyping, onToggleSidebar, onToggleProfile, profileOpen }: ChatPanelProps) => {
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -105,23 +108,35 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <AvatarBubble
-            letter={chat.displayAvatar}
-            status={chat.is_group ? undefined : (chat.otherMemberStatus as "online" | "offline" | undefined)}
-            imageUrl={chat.is_group ? null : (chat.members.find(m => m.user_id !== user?.id)?.profiles?.avatar_url ?? null)}
-          />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">{chat.displayName}</h2>
-            <p className="text-[11px] text-muted-foreground">
-              {chat.is_group
-                ? `${chat.members.length} members`
-                : chat.otherMemberStatus === "online"
-                ? "Online"
-                : "Offline"}
-            </p>
-          </div>
+      <div className="px-3 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          {/* Mobile back/menu button */}
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={onToggleProfile}
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+          >
+            <AvatarBubble
+              letter={chat.displayAvatar}
+              status={chat.is_group ? undefined : (chat.otherMemberStatus as "online" | "offline" | undefined)}
+              imageUrl={chat.is_group ? null : (chat.members.find(m => m.user_id !== user?.id)?.profiles?.avatar_url ?? null)}
+            />
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">{chat.displayName}</h2>
+              <p className="text-[11px] text-muted-foreground">
+                {chat.is_group
+                  ? `${chat.members.length} members`
+                  : chat.otherMemberStatus === "online"
+                  ? "🟢 Online"
+                  : "⚫ Offline"}
+              </p>
+            </div>
+          </button>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -136,8 +151,11 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
           >
             <Video className="h-4 w-4" />
           </button>
-          <button className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <MoreVertical className="h-4 w-4" />
+          <button
+            onClick={onToggleProfile}
+            className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors ${profileOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Info className="h-4 w-4" />
           </button>
         </div>
       </div>
