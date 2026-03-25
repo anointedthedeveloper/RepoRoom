@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Hash, ArrowLeft, Send, Smile, X, Users, UserPlus, MessageSquare } from "lucide-react";
+import { Hash, ArrowLeft, Send, Smile, X, Users, UserPlus, MessageSquare, Github } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
 import TasksPanel from "@/components/workspace/TasksPanel";
+import GithubPanel from "@/components/github/GithubPanel";
 import MessageBubble from "@/components/chat/MessageBubble";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import type { Channel } from "@/hooks/useWorkspace";

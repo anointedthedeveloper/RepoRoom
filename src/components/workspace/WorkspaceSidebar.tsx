@@ -106,15 +106,17 @@ const WorkspaceSidebar = ({
           <div className="flex-1 overflow-y-auto">
             {/* Channels */}
             <div className="px-3 pt-3">
-              <button onClick={() => setShowChannels(v => !v)}
-                className="flex items-center gap-1 w-full text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 hover:text-foreground transition-colors">
-                {showChannels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                Channels
-                <button onClick={(e) => { e.stopPropagation(); onCreateChannel(); }}
-                  className="ml-auto h-4 w-4 rounded flex items-center justify-center hover:bg-sidebar-accent">
+              <div className="flex items-center gap-1 w-full mb-1">
+                <button onClick={() => setShowChannels(v => !v)}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors flex-1">
+                  {showChannels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  Channels
+                </button>
+                <button onClick={onCreateChannel}
+                  className="h-4 w-4 rounded flex items-center justify-center hover:bg-sidebar-accent ml-auto">
                   <Plus className="h-3 w-3" />
                 </button>
-              </button>
+              </div>
               <AnimatePresence>
                 {showChannels && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-0.5">

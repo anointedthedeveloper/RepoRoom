@@ -2,6 +2,8 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, CheckCheck, FileText, Download, Play, Pause, Phone, Video, Reply, X, Pencil, Trash2, Copy, Pin, SmilePlus, Forward, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
+import GithubRepoCard from "@/components/github/GithubRepoCard";
+import { useGithub } from "@/hooks/useGithub";
 
 interface Reaction { emoji: string; count: number; mine: boolean; }
 
@@ -150,6 +152,7 @@ const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, o
   const [showReactPicker, setShowReactPicker] = useState(false);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapCount = useRef(0);
+  const { parseGithubUrl } = useGithub();
 
   const isImage   = message.fileType?.startsWith("image/");
   const isVideo   = message.fileType?.startsWith("video/");
@@ -157,6 +160,15 @@ const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, o
   const isCall    = message.fileType === "call/audio" || message.fileType === "call/video";
   const isSystem  = message.fileType === "system";
   const isDeleted = message.fileType === "deleted";
+
+  // Detect GitHub repo link in message text
+  const githubRepo = !message.fileUrl && !isCall && !isDeleted
+    ? (() => {
+        const urlMatch = message.text?.match(/https?:\/\/github\.com\/[^\s]+/);
+        if (!urlMatch) return null;
+        return parseGithubUrl(urlMatch[0]);
+      })()
+    : null;
 
   const contentParts = (!isCall && !isDeleted && message.text && !(message.fileUrl && message.text.startsWith("📎")))
     ? parseContent(message.text)
@@ -349,6 +361,9 @@ const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, o
                   ? <p key={i} className="text-sm leading-relaxed break-words whitespace-pre-wrap">{part.content}</p>
                   : null
             )}
+
+            {/* GitHub repo preview */}
+            {githubRepo && <GithubRepoCard owner={githubRepo.owner} repo={githubRepo.repo} isMine={isMine} />}
 
             {/* Timestamp + read receipt */}
             {!isCall && (
