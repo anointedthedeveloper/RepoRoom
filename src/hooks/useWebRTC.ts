@@ -113,12 +113,11 @@ export function useWebRTC() {
         ? Math.round((Date.now() - callStartTimeRef.current) / 1000)
         : 0;
       const type = callTypeRef.current === "video" ? "call/video" : "call/audio";
-      const icon = callTypeRef.current === "video" ? "📹" : "📞";
       let text = "";
-      if (status === "ended") text = `${icon} Call ended · ${dur < 60 ? `${dur}s` : `${Math.floor(dur / 60)}m ${dur % 60}s`}`;
-      else if (status === "missed") text = `${icon} Missed call`;
-      else if (status === "rejected") text = `${icon} Call declined`;
-      else if (status === "no-answer") text = `${icon} No answer`;
+      if (status === "ended") text = `Call ended · ${dur < 60 ? `${dur}s` : `${Math.floor(dur / 60)}m ${dur % 60}s`}`;
+      else if (status === "missed") text = "Missed call";
+      else if (status === "rejected") text = "Call declined";
+      else if (status === "no-answer") text = "No answer";
       if (text) sendCallMessage(roomId, text, type);
     }
 

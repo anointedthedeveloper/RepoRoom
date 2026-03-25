@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check } from "lucide-react";
+import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarBubble from "./AvatarBubble";
 import type { EnrichedChatRoom } from "@/hooks/useChat";
@@ -96,12 +96,19 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-20 lg:hidden" onClick={onClose} />
+          {/* Backdrop */}
           <motion.div
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-72 bg-card border-l border-border z-30 flex flex-col shadow-2xl lg:relative lg:w-64 lg:shrink-0 lg:shadow-none lg:z-auto"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-20"
+            onClick={onClose}
+          />
+          {/* Panel — always fixed overlay, never takes layout space */}
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            className="fixed right-0 top-0 h-full w-72 bg-card border-l border-border z-30 flex flex-col shadow-2xl"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
               <span className="text-sm font-semibold text-foreground">{chat.is_group ? "Group Info" : "Profile"}</span>
@@ -148,13 +155,14 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
                   </div>
                 ) : (
                   <>
-                    <h3
-                      className={`text-base font-semibold text-foreground mt-3 ${chat.is_group ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
-                      onClick={() => chat.is_group && setEditingGroup(true)}
-                    >
-                      {chat.displayName}
-                      {chat.is_group && <span className="text-xs text-muted-foreground ml-1">✏️</span>}
-                    </h3>
+                    <div className="flex items-center gap-1.5 mt-3">
+                      <h3 className="text-base font-semibold text-foreground">{chat.displayName}</h3>
+                      {chat.is_group && (
+                        <button onClick={() => setEditingGroup(true)} className="text-muted-foreground hover:text-primary transition-colors">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                     {!chat.is_group && profile?.username && (
                       <p className="text-xs text-muted-foreground mt-0.5">@{profile.username}</p>
                     )}
@@ -198,7 +206,6 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh }: UserP
                     </button>
                   </div>
 
-                  {/* Add members panel */}
                   <AnimatePresence>
                     {showAddMembers && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-3">

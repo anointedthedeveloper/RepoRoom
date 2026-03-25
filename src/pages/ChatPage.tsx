@@ -100,8 +100,8 @@ const ChatPage = () => {
           <EmptyChatPanel onToggleSidebar={() => setSidebarOpen(true)} />
         )}
 
-        {/* User profile panel — only renders when open */}
-        {activeChat && profileOpen && (
+        {/* User profile panel — always rendered, handles open state internally */}
+        {activeChat && (
           <UserProfilePanel
             chat={activeChat}
             open={profileOpen}
