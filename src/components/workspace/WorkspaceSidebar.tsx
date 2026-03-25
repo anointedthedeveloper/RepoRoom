@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import AvatarBubble from "@/components/chat/AvatarBubble";
 import type { Workspace, Channel, WorkspaceMember, Task, WorkspaceProject } from "@/hooks/useWorkspace";
 
-export const DEV_STATUSES = [
+const DEV_STATUSES = [
   { id: "online",    label: "Online",         color: "bg-green-500" },
   { id: "coding",    label: "Coding",         color: "bg-blue-500" },
   { id: "reviewing", label: "Reviewing code", color: "bg-yellow-500" },

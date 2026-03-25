@@ -242,9 +242,9 @@ const WorkspacePage = () => {
   }, [activeWorkspace, chName, createChannel]);
 
   return (
-    <div className="h-screen flex overflow-hidden bg-background">
+    <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
       {/* Sidebar */}
-      <div className="w-64 shrink-0">
+      <div className="w-72 shrink-0 border-r border-border/60 bg-sidebar/95 backdrop-blur-xl">
         <WorkspaceSidebar
           workspaces={workspaces}
           activeWorkspace={activeWorkspace}
@@ -266,10 +266,10 @@ const WorkspacePage = () => {
       </div>
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 p-3 lg:p-4 gap-3">
         {/* Channel header */}
         {activeChannel ? (
-          <div className="px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-3 shrink-0">
+          <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 backdrop-blur-sm flex items-center gap-3 shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <button onClick={() => navigate("/")} title="Back to chats"
               className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
               <MessageSquare className="h-4 w-4" />
@@ -305,7 +305,7 @@ const WorkspacePage = () => {
             </div>
           </div>
         ) : (
-          <div className="px-4 py-3 border-b border-border bg-card/80 flex items-center gap-3 shrink-0">
+          <div className="px-4 py-3 rounded-2xl border border-border/70 bg-card/85 flex items-center gap-3 shrink-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <button onClick={() => navigate("/")} title="Back to chats"
               className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors">
               <MessageSquare className="h-4 w-4" />
@@ -316,17 +316,33 @@ const WorkspacePage = () => {
           </div>
         )}
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden gap-3 min-h-0">
           {/* Messages */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card/80 backdrop-blur-sm shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/20 shrink-0">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{activeChannel ? `#${activeChannel.name}` : "Workspace feed"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {activeChannel ? `${messages.length} message${messages.length === 1 ? "" : "s"} in this channel` : "Choose a channel to start collaborating"}
+                </p>
+              </div>
+              {activeWorkspace && (
+                <div className="hidden md:flex items-center gap-2 text-[11px]">
+                  <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-muted-foreground">{members.length} members</span>
+                  <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-muted-foreground">{tasks.filter((task) => task.status !== "done").length} open tasks</span>
+                </div>
+              )}
+            </div>
             <div className="flex-1 overflow-y-auto py-3">
               {activeChannel && messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-                  <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center">
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+                  <div className="h-14 w-14 rounded-[20px] gradient-primary flex items-center justify-center shadow-lg">
                     <Hash className="h-6 w-6 text-white" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">Welcome to #{activeChannel.name}</p>
-                  <p className="text-xs text-muted-foreground">{activeChannel.description || "Start the conversation!"}</p>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-foreground">Welcome to #{activeChannel.name}</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">{activeChannel.description || "Start the conversation, drop GitHub links, or turn messages into tracked work."}</p>
+                  </div>
                 </div>
               )}
               {messages.map((msg, i) => {
@@ -367,11 +383,11 @@ const WorkspacePage = () => {
 
             {/* Input */}
             {activeChannel && (
-              <div className="px-3 py-3 border-t border-border shrink-0">
+              <div className="px-3 py-3 border-t border-border/60 shrink-0 bg-background/80">
                 {showEmoji && (
                   <EmojiPicker onSelect={(e) => setInput((p) => p + e)} onClose={() => setShowEmoji(false)} />
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/35 p-2">
                   <button onClick={() => setShowEmoji(!showEmoji)} className="h-9 w-9 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0">
                     <Smile className="h-5 w-5" />
                   </button>
@@ -380,7 +396,7 @@ const WorkspacePage = () => {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage())}
                     placeholder={`Message #${activeChannel.name}`}
-                    className="flex-1 bg-muted text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary transition-all"
+                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground rounded-xl px-2 py-2.5 outline-none focus:ring-0 transition-all"
                   />
                   <button onClick={sendMessage} disabled={!input.trim()}
                     className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white shrink-0 disabled:opacity-40">
@@ -413,7 +429,6 @@ const WorkspacePage = () => {
                 <ProjectsPanel
                   projects={projects}
                   linkedRepos={linkedRepos.map((repo) => repo.repo_full_name)}
-                  workspaceId={activeWorkspace.id}
                   onCreateProject={(name, description, linkedRepoFullName) => createProject(activeWorkspace.id, name, description, linkedRepoFullName)}
                   onUpdateStatus={(projectId, status) => updateProjectStatus(projectId, status, activeWorkspace.id)}
                   onClose={() => setShowProjects(false)}

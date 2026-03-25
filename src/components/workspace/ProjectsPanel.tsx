@@ -6,7 +6,6 @@ import type { WorkspaceProject } from "@/hooks/useWorkspace";
 interface Props {
   projects: WorkspaceProject[];
   linkedRepos: string[];
-  workspaceId: string;
   onCreateProject: (name: string, description?: string, linkedRepoFullName?: string | null) => void;
   onUpdateStatus: (projectId: string, status: WorkspaceProject["status"]) => void;
   onClose: () => void;

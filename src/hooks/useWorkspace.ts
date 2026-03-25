@@ -144,19 +144,19 @@ export function useWorkspace() {
     const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
     const { data, error } = await supabase
       .from("workspaces")
-      .insert({ name, description: description || null, created_by: user.id, invite_code: inviteCode } as any)
+      .insert({ name, description: description || null, created_by: user.id, invite_code: inviteCode } as never)
       .select().single();
     if (error || !data) return null;
 
     await supabase.from("workspace_members").insert({
       workspace_id: data.id, user_id: user.id, role: "owner",
-    } as any);
+    } as never);
 
     // Create default channels
     await supabase.from("channels").insert([
       { workspace_id: data.id, name: "general", type: "text", description: "General discussion" },
       { workspace_id: data.id, name: "announcements", type: "announcement", description: "Important updates" },
-    ] as any);
+    ] as never);
 
     await fetchWorkspaces();
     return data as Workspace;
@@ -173,7 +173,7 @@ export function useWorkspace() {
 
     await supabase.from("workspace_members").upsert({
       workspace_id: ws.id, user_id: user.id, role: "member",
-    } as any);
+    } as never);
 
     await fetchWorkspaces();
     return ws as Workspace;
@@ -182,7 +182,7 @@ export function useWorkspace() {
   const createChannel = useCallback(async (workspaceId: string, name: string, type: "text" | "announcement" = "text") => {
     const { data } = await supabase
       .from("channels")
-      .insert({ workspace_id: workspaceId, name: name.toLowerCase().replace(/\s+/g, "-"), type } as any)
+      .insert({ workspace_id: workspaceId, name: name.toLowerCase().replace(/\s+/g, "-"), type } as never)
       .select().single();
     if (data) await fetchChannels(workspaceId);
     return data as Channel | null;
@@ -191,7 +191,7 @@ export function useWorkspace() {
   const setDevStatus = useCallback(async (workspaceId: string, status: string) => {
     if (!user) return;
     await supabase.from("workspace_members")
-      .update({ dev_status: status } as any)
+      .update({ dev_status: status } as never)
       .eq("workspace_id", workspaceId)
       .eq("user_id", user.id);
     await fetchMembers(workspaceId);
@@ -201,14 +201,14 @@ export function useWorkspace() {
     if (!user) return null;
     const { data } = await supabase
       .from("workspace_tasks")
-      .insert({ workspace_id: workspaceId, title, description: description || null, channel_id: channelId || null, message_id: messageId || null, created_by: user.id, status: "open" } as any)
+      .insert({ workspace_id: workspaceId, title, description: description || null, channel_id: channelId || null, message_id: messageId || null, created_by: user.id, status: "open" } as never)
       .select().single();
     if (data) await fetchTasks(workspaceId);
     return data as Task | null;
   }, [user, fetchTasks]);
 
   const updateTaskStatus = useCallback(async (taskId: string, status: Task["status"], workspaceId: string) => {
-    await supabase.from("workspace_tasks").update({ status } as any).eq("id", taskId);
+    await supabase.from("workspace_tasks").update({ status } as never).eq("id", taskId);
     await fetchTasks(workspaceId);
   }, [fetchTasks]);
 
@@ -249,7 +249,7 @@ export function useWorkspace() {
     if (!profile) return "User not found";
     const { error } = await supabase.from("workspace_members").upsert({
       workspace_id: workspaceId, user_id: profile.id, role: "member",
-    } as any);
+    } as never);
     if (error) return "Already a member or error adding";
     await fetchMembers(workspaceId);
     return null;

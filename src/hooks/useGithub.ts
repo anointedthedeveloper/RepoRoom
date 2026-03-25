@@ -106,8 +106,8 @@ export function useGithub() {
         page++;
       }
       setRepos(all);
-    } catch (e: any) {
-      const msg = e.message || "";
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
       if (msg.includes("401")) setError("Token expired or invalid — please reconnect");
       else if (msg.includes("403")) setError("Rate limit exceeded — try again later");
       else if (msg.includes("404")) setError("User not found");
@@ -123,7 +123,7 @@ export function useGithub() {
       const q = token ? `${query} user:${githubUser}` : `${query} user:${githubUser}`;
       const data = await ghFetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=updated&per_page=20`);
       return (data.items || []) as GithubRepo[];
-    } catch (e: any) {
+    } catch {
       return [];
     }
   }, [token, githubUser, ghFetch]);
