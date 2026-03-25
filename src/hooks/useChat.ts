@@ -426,17 +426,22 @@ export function useChat() {
         r.id === chatRoomId ? { ...r, isPending: false, isRequester: false, status: "accepted" } : r
       )
     );
-    const { error } = await supabase
-      .from("chat_rooms")
-      .update({ status: "accepted" } as any)
-      .eq("id", chatRoomId);
+    // Use RPC to bypass RLS — the recipient may not be the creator so direct update can be blocked
+    const { error } = await supabase.rpc("accept_chat_request", { room_id: chatRoomId } as any);
     if (error) {
-      // Rollback on failure
-      setChatRooms((prev) =>
-        prev.map((r) =>
-          r.id === chatRoomId ? { ...r, isPending: true, status: "pending" } : r
-        )
-      );
+      // Fallback: try direct update
+      const { error: updateError } = await supabase
+        .from("chat_rooms")
+        .update({ status: "accepted" } as any)
+        .eq("id", chatRoomId);
+      if (updateError) {
+        // Rollback on failure
+        setChatRooms((prev) =>
+          prev.map((r) =>
+            r.id === chatRoomId ? { ...r, isPending: true, status: "pending" } : r
+          )
+        );
+      }
     }
     await fetchChatRooms();
   }, [fetchChatRooms]);
