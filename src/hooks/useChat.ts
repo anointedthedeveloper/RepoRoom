@@ -79,16 +79,24 @@ export function useChat() {
 
     const roomIds = memberRows.map((m) => m.chat_room_id);
 
-    // Batch all queries in parallel
+    // Batch all queries in parallel — fetch members without role first, add role if available
     const [roomsRes, allMembersRes] = await Promise.all([
       supabase.from("chat_rooms").select("*").in("id", roomIds),
-      supabase.from("chat_members").select("chat_room_id, user_id, role").in("chat_room_id", roomIds),
+      supabase.from("chat_members").select("chat_room_id, user_id").in("chat_room_id", roomIds),
     ]);
 
     const rooms = roomsRes.data;
     if (!rooms) { setLoading(false); return; }
 
+    // Try to fetch role column — silently ignore if it doesn't exist yet
+    let roleMap = new Map<string, string | null>();
+    const roleRes = await supabase.from("chat_members").select("chat_room_id, user_id, role").in("chat_room_id", roomIds);
+    if (!roleRes.error && roleRes.data) {
+      roleRes.data.forEach((r: any) => roleMap.set(`${r.chat_room_id}:${r.user_id}`, r.role ?? null));
+    }
+
     const allMemberRows = allMembersRes.data || [];
+    if (!allMemberRows.length) { setLoading(false); return; }
     const allUserIds = [...new Set(allMemberRows.map((m) => m.user_id))];
 
     const [profilesRes, lastMsgsRes] = await Promise.all([
@@ -100,10 +108,10 @@ export function useChat() {
     const allMessages = lastMsgsRes.data || [];
 
     const enriched: EnrichedChatRoom[] = rooms.map((room) => {
-      const roomMemberRows = allMemberRows.filter((m) => m.chat_room_id === room.id);
+      const roomMemberRows = allMembersRes.data?.filter((m) => m.chat_room_id === room.id) ?? [];
       const members: ChatMember[] = roomMemberRows.map((row) => ({
         user_id: row.user_id,
-        role: (row as any).role ?? null,
+        role: roleMap.get(`${row.chat_room_id}:${row.user_id}`) ?? null,
         profiles: profileMap.get(row.user_id) as ChatMember["profiles"],
       })).filter((m) => m.profiles);
       const onlineCount = members.filter((m) => m.profiles?.status === "online").length;
@@ -167,14 +175,15 @@ export function useChat() {
         .eq("is_read", false)
         .neq("sender_id", user.id);
     }
-    // Mark undelivered as delivered
+    // Mark as delivered — silently skip if column doesn't exist
     if (user) {
-      await supabase
+      supabase
         .from("messages")
         .update({ is_delivered: true } as any)
         .eq("chat_room_id", activeChatId)
-        .eq("is_delivered", false)
-        .neq("sender_id", user.id);
+        .neq("sender_id", user.id)
+        .then(() => {}) // fire and forget, ignore 400 if column missing
+        .catch(() => {});
     }
   }, [activeChatId, user]);
 
@@ -267,13 +276,15 @@ export function useChat() {
 
       if (!newRoom) return null;
 
-      // Creator gets admin role, others get member
-      const members = [
-        { chat_room_id: newRoom.id, user_id: user.id, role: "admin" },
-        ...memberIds.map((id) => ({ chat_room_id: newRoom.id, user_id: id, role: "member" })),
+      // Creator gets admin role — silently skip role if column doesn't exist
+      const baseMembers = [
+        { chat_room_id: newRoom.id, user_id: user.id },
+        ...memberIds.map((id) => ({ chat_room_id: newRoom.id, user_id: id })),
       ];
-
-      await supabase.from("chat_members").insert(members);
+      await supabase.from("chat_members").insert(baseMembers);
+      // Try to set admin role — ignore error if column missing
+      supabase.from("chat_members").update({ role: "admin" } as any)
+        .eq("chat_room_id", newRoom.id).eq("user_id", user.id).then(() => {}).catch(() => {});
       await fetchChatRooms();
       return newRoom.id;
     },
@@ -348,11 +359,11 @@ export function useChat() {
               return [...prev, newMsg];
             });
             if (newMsg.sender_id !== user.id) {
-              supabase.from("messages").update({ is_read: true, is_delivered: true } as any).eq("id", newMsg.id);
+              supabase.from("messages").update({ is_read: true } as any).eq("id", newMsg.id).then(() => {}).catch(() => {});
             }
           } else if (newMsg.sender_id !== user.id) {
-            // Mark as delivered even when not in active chat
-            supabase.from("messages").update({ is_delivered: true } as any).eq("id", newMsg.id);
+            // Mark as delivered — fire and forget, ignore if column missing
+            supabase.from("messages").update({ is_delivered: true } as any).eq("id", newMsg.id).then(() => {}).catch(() => {});
           }
           if (newMsg.sender_id !== user.id && document.hidden) {
             // Push notification when app is in background
