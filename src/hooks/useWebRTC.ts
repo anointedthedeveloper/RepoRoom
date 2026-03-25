@@ -29,35 +29,42 @@ export function useWebRTC() {
   const [callDuration, setCallDuration] = useState(0);
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
-  const channelRef = useRef<any>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const remoteUserIdRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   const cleanup = useCallback(() => {
     if (peerConnection.current) {
       peerConnection.current.close();
       peerConnection.current = null;
     }
-    if (localStream) {
-      localStream.getTracks().forEach((t) => t.stop());
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
     }
     setLocalStream(null);
     setRemoteStream(null);
     setCallState("idle");
     setRemoteUserId(null);
+    remoteUserIdRef.current = null;
     setCallDuration(0);
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }, [localStream]);
+  }, []);
 
+  // Send signal via Supabase DB table (more reliable than broadcast with new key format)
   const sendSignal = useCallback(
-    (signal: Omit<CallSignal, "from">) => {
-      if (!user || !channelRef.current) return;
-      channelRef.current.send({
-        type: "broadcast",
-        event: "call-signal",
-        payload: { ...signal, from: user.id, fromUsername: profile?.username || "Unknown" },
+    async (signal: Omit<CallSignal, "from">) => {
+      if (!user) return;
+      await supabase.from("call_signals").insert({
+        from_user: user.id,
+        to_user: signal.to,
+        signal_type: signal.type,
+        signal_data: signal.data ? JSON.stringify(signal.data) : null,
+        call_type: signal.callType || null,
+        from_username: profile?.display_name || profile?.username || "Unknown",
       });
     },
     [user, profile]
@@ -69,28 +76,17 @@ export function useWebRTC() {
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          sendSignal({
-            type: "ice-candidate",
-            to: targetUserId,
-            data: event.candidate,
-          });
+          sendSignal({ type: "ice-candidate", to: targetUserId, data: event.candidate });
         }
       };
 
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0]);
-      };
+      pc.ontrack = (event) => setRemoteStream(event.streams[0]);
 
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") {
           setCallState("connected");
-          timerRef.current = setInterval(() => {
-            setCallDuration((d) => d + 1);
-          }, 1000);
-        } else if (
-          pc.connectionState === "disconnected" ||
-          pc.connectionState === "failed"
-        ) {
+          timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
+        } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
           cleanup();
         }
       };
@@ -104,16 +100,14 @@ export function useWebRTC() {
   const startCall = useCallback(
     async (targetUserId: string, type: "audio" | "video") => {
       if (!user) return;
-
       setCallType(type);
       setRemoteUserId(targetUserId);
+      remoteUserIdRef.current = targetUserId;
       setCallState("calling");
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: type === "video",
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
+        localStreamRef.current = stream;
         setLocalStream(stream);
 
         const pc = createPeerConnection(targetUserId);
@@ -121,13 +115,7 @@ export function useWebRTC() {
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-
-        sendSignal({
-          type: "offer",
-          to: targetUserId,
-          data: offer,
-          callType: type,
-        });
+        await sendSignal({ type: "offer", to: targetUserId, data: offer, callType: type });
       } catch (err) {
         console.error("Failed to start call:", err);
         cleanup();
@@ -139,16 +127,14 @@ export function useWebRTC() {
   const acceptCall = useCallback(
     async (signal: CallSignal) => {
       if (!user) return;
-
-      setCallState("connected");
       const type = signal.callType || "audio";
       setCallType(type);
+      setRemoteUserId(signal.from);
+      remoteUserIdRef.current = signal.from;
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: type === "video",
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
+        localStreamRef.current = stream;
         setLocalStream(stream);
 
         const pc = createPeerConnection(signal.from);
@@ -157,12 +143,7 @@ export function useWebRTC() {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-
-        sendSignal({
-          type: "answer",
-          to: signal.from,
-          data: answer,
-        });
+        await sendSignal({ type: "answer", to: signal.from, data: answer });
       } catch (err) {
         console.error("Failed to accept call:", err);
         cleanup();
@@ -172,113 +153,75 @@ export function useWebRTC() {
   );
 
   const endCall = useCallback(() => {
-    if (remoteUserId) {
-      sendSignal({ type: "end-call", to: remoteUserId });
-    }
+    const rid = remoteUserIdRef.current;
+    if (rid) sendSignal({ type: "end-call", to: rid });
     cleanup();
-  }, [remoteUserId, sendSignal, cleanup]);
+  }, [sendSignal, cleanup]);
 
   const toggleMute = useCallback(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((t) => {
-        t.enabled = !t.enabled;
-      });
-    }
-  }, [localStream]);
+    localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !t.enabled; });
+  }, []);
 
   const toggleVideo = useCallback(() => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((t) => {
-        t.enabled = !t.enabled;
-      });
-    }
-  }, [localStream]);
+    localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
+  }, []);
 
-  // Listen for call signals
+  // Listen for incoming signals via postgres_changes on call_signals table
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase.channel(`calls-${user.id}`, {
-      config: { broadcast: { self: false } },
-    });
+    const channel = supabase
+      .channel(`call-signals-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "call_signals", filter: `to_user=eq.${user.id}` },
+        async (payload) => {
+          const row = payload.new as any;
+          const signal: CallSignal = {
+            type: row.signal_type,
+            from: row.from_user,
+            to: row.to_user,
+            data: row.signal_data ? JSON.parse(row.signal_data) : undefined,
+            callType: row.call_type,
+            fromUsername: row.from_username,
+          };
 
-    channel
-      .on("broadcast", { event: "call-signal" }, ({ payload }) => {
-        const signal = payload as CallSignal;
-        if (signal.to !== user.id) return;
+          switch (signal.type) {
+            case "offer":
+              setRemoteUserId(signal.from);
+              remoteUserIdRef.current = signal.from;
+              setRemoteUsername(signal.fromUsername || "Unknown");
+              setCallType(signal.callType || "audio");
+              setCallState("receiving");
+              (window as any).__pendingCallSignal = signal;
+              break;
+            case "answer":
+              if (peerConnection.current) {
+                await peerConnection.current.setRemoteDescription(new RTCSessionDescription(signal.data));
+              }
+              break;
+            case "ice-candidate":
+              if (peerConnection.current) {
+                await peerConnection.current.addIceCandidate(new RTCIceCandidate(signal.data));
+              }
+              break;
+            case "end-call":
+              cleanup();
+              break;
+          }
 
-        switch (signal.type) {
-          case "offer":
-            setRemoteUserId(signal.from);
-            setRemoteUsername(signal.fromUsername || "Unknown");
-            setCallType(signal.callType || "audio");
-            setCallState("receiving");
-            // Store the signal for when user accepts
-            (window as any).__pendingCallSignal = signal;
-            break;
-
-          case "answer":
-            if (peerConnection.current) {
-              peerConnection.current.setRemoteDescription(
-                new RTCSessionDescription(signal.data)
-              );
-            }
-            break;
-
-          case "ice-candidate":
-            if (peerConnection.current) {
-              peerConnection.current.addIceCandidate(
-                new RTCIceCandidate(signal.data)
-              );
-            }
-            break;
-
-          case "end-call":
-            cleanup();
-            break;
+          // Clean up the signal row
+          await supabase.from("call_signals").delete().eq("id", row.id);
         }
-      })
+      )
       .subscribe();
 
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user, cleanup]);
 
-  // Also subscribe to target user's channel when calling
-  useEffect(() => {
-    if (!user || !remoteUserId) return;
-
-    const targetChannel = supabase.channel(`calls-${remoteUserId}`, {
-      config: { broadcast: { self: false } },
-    });
-
-    targetChannel.subscribe();
-
-    // Update the channelRef to point to the target's channel for sending
-    const originalChannel = channelRef.current;
-    channelRef.current = targetChannel;
-
-    return () => {
-      supabase.removeChannel(targetChannel);
-      channelRef.current = originalChannel;
-    };
-  }, [user, remoteUserId]);
-
   return {
-    callState,
-    callType,
-    remoteUserId,
-    remoteUsername,
-    localStream,
-    remoteStream,
-    callDuration,
-    startCall,
-    acceptCall,
-    endCall,
-    toggleMute,
-    toggleVideo,
+    callState, callType, remoteUserId, remoteUsername,
+    localStream, remoteStream, callDuration,
+    startCall, acceptCall, endCall, toggleMute, toggleVideo,
   };
 }

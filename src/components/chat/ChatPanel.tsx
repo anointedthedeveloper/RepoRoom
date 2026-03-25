@@ -35,6 +35,7 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   const [showEmoji, setShowEmoji] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,9 +52,10 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   const uploadFile = useCallback(async (file: File): Promise<{ url: string; type: string; name: string } | null> => {
     const ext = file.name.split(".").pop();
     const path = `${user?.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("chat-attachments").upload(path, file);
+    const { error } = await supabase.storage.from("chat-attachments").upload(path, file, { upsert: true });
     if (error) {
-      console.error("Upload error:", error);
+      console.error("Upload error:", error.message);
+      setUploadError(`Upload failed: ${error.message}`);
       return null;
     }
     const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
@@ -74,6 +76,10 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
         fileUrl = result.url;
         fileType = result.type;
         fileName = result.name;
+      } else {
+        setUploading(false);
+        setSelectedFile(null);
+        return;
       }
       setSelectedFile(null);
     }
@@ -164,6 +170,11 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
       {selectedFile && (
         <div className="px-4 pt-2">
           <FilePreview file={selectedFile} onRemove={() => setSelectedFile(null)} />
+        </div>
+      )}
+      {uploadError && (
+        <div className="px-4 py-1">
+          <p className="text-xs text-destructive">{uploadError}</p>
         </div>
       )}
 

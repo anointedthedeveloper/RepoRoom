@@ -71,73 +71,54 @@ export function useChat() {
 
     const roomIds = memberRows.map((m) => m.chat_room_id);
 
-    const { data: rooms } = await supabase
-      .from("chat_rooms")
-      .select("*")
-      .in("id", roomIds);
+    // Batch all queries in parallel
+    const [roomsRes, allMembersRes] = await Promise.all([
+      supabase.from("chat_rooms").select("*").in("id", roomIds),
+      supabase.from("chat_members").select("chat_room_id, user_id").in("chat_room_id", roomIds),
+    ]);
 
-    if (!rooms) {
-      setLoading(false);
-      return;
-    }
+    const rooms = roomsRes.data;
+    if (!rooms) { setLoading(false); return; }
 
-    const enriched: EnrichedChatRoom[] = await Promise.all(
-      rooms.map(async (room) => {
-        // Get members
-        const { data: roomMemberRows } = await supabase
-          .from("chat_members")
-          .select("user_id")
-          .eq("chat_room_id", room.id);
+    const allMemberRows = allMembersRes.data || [];
+    const allUserIds = [...new Set(allMemberRows.map((m) => m.user_id))];
 
-        const memberUserIds = (roomMemberRows || []).map((m) => m.user_id);
-        const { data: memberProfiles } = await supabase
-          .from("profiles")
-          .select("id, username, display_name, avatar_url, status, last_seen")
-          .in("id", memberUserIds);
+    const [profilesRes, lastMsgsRes] = await Promise.all([
+      supabase.from("profiles").select("id, username, display_name, avatar_url, status, last_seen").in("id", allUserIds),
+      supabase.from("messages").select("*").in("chat_room_id", roomIds).order("created_at", { ascending: false }),
+    ]);
 
-        const members: ChatMember[] = (memberProfiles || []).map((p) => ({
-          user_id: p.id,
-          profiles: p,
-        }));
+    const profileMap = new Map((profilesRes.data || []).map((p) => [p.id, p]));
+    const allMessages = lastMsgsRes.data || [];
 
-        // Get last message
-        const { data: msgs } = await supabase
-          .from("messages")
-          .select("*")
-          .eq("chat_room_id", room.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
+    const enriched: EnrichedChatRoom[] = rooms.map((room) => {
+      const roomMemberIds = allMemberRows.filter((m) => m.chat_room_id === room.id).map((m) => m.user_id);
+      const members: ChatMember[] = roomMemberIds.map((uid) => ({
+        user_id: uid,
+        profiles: profileMap.get(uid) as ChatMember["profiles"],
+      })).filter((m) => m.profiles);
 
-        // Get unread count
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("chat_room_id", room.id)
-          .eq("is_read", false)
-          .neq("sender_id", user.id);
+      const roomMessages = allMessages.filter((m) => m.chat_room_id === room.id);
+      const lastMessage = roomMessages[0];
+      const unreadCount = roomMessages.filter((m) => !m.is_read && m.sender_id !== user.id).length;
 
-        const otherMember = members.find(
-          (m) => m.user_id !== user.id
-        );
+      const otherMember = members.find((m) => m.user_id !== user.id);
+      const displayName = room.is_group
+        ? room.name || "Group Chat"
+        : otherMember?.profiles?.display_name || otherMember?.profiles?.username || "Unknown";
+      const displayAvatar = displayName[0]?.toUpperCase() || "?";
 
-        const displayName = room.is_group
-          ? room.name || "Group Chat"
-          : otherMember?.profiles?.display_name || otherMember?.profiles?.username || "Unknown";
-
-        const displayAvatar = displayName[0]?.toUpperCase() || "?";
-
-        return {
-          ...room,
-          members,
-          messages: [],
-          lastMessage: msgs?.[0] || undefined,
-          unreadCount: count || 0,
-          displayName,
-          displayAvatar,
-          otherMemberStatus: otherMember?.profiles?.status,
-        };
-      })
-    );
+      return {
+        ...room,
+        members,
+        messages: [],
+        lastMessage,
+        unreadCount,
+        displayName,
+        displayAvatar,
+        otherMemberStatus: otherMember?.profiles?.status,
+      };
+    });
 
     enriched.sort((a, b) => {
       const aTime = a.lastMessage?.created_at || a.created_at;
