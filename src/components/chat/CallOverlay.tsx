@@ -112,9 +112,10 @@ const CallOverlay = ({
   const isVideo       = callType === "video";
   const isConnected   = callState === "connected";
   const isReceiving   = callState === "receiving";
-  const showMainVideo = isVideo && isConnected;
-
-  const showSelfPip = isVideo && (!!localStream || (isReceiving && !!previewStreamRef.current));
+  // Show main video if connected and remote stream has video tracks (covers upgrade case)
+  const hasRemoteVideo = !!(remoteStream?.getVideoTracks().length);
+  const showMainVideo = isConnected && (isVideo || hasRemoteVideo);
+  const showSelfPip = (isVideo || hasRemoteVideo) && (!!localStream || (isReceiving && !!previewStreamRef.current));
 
   const wa = (fn: () => void) => () => { unlockAudio(); fn(); };
 

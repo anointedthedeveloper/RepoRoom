@@ -500,6 +500,9 @@ export function useWebRTC() {
     setIsScreenSharing(false);
   }, [replaceVideoTrack]);
 
+  const upgradeToVideoRef = useRef<(notify?: boolean) => Promise<void>>(async () => {});
+  useEffect(() => { upgradeToVideoRef.current = upgradeToVideo; }, [upgradeToVideo]);
+
   // Signal listener
   useEffect(() => {
     if (!user) return;
@@ -613,8 +616,7 @@ export function useWebRTC() {
               break;
 
             case "upgrade-video":
-              // Remote initiated upgrade — get our camera, wait for their renegotiation offer
-              upgradeToVideo(false);
+              upgradeToVideoRef.current(false);
               break;
           }
 
@@ -624,7 +626,7 @@ export function useWebRTC() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, cleanup, upgradeToVideo]);
+  }, [user, cleanup]);
 
   useEffect(() => {
     if (callState === "idle") return;
