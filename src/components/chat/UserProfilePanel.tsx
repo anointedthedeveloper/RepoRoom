@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Phone, Video, MessageSquare, Camera, Loader2, UserPlus, Check, Pencil, ZoomIn, Shield, ShieldOff, Trash2, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarBubble from "./AvatarBubble";
+import ImageCropper from "./ImageCropper";
 import type { EnrichedChatRoom } from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +67,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
   const [groupName, setGroupName] = useState(chat.displayName);
   const [groupDesc, setGroupDesc] = useState((chat as any).description || "");
   const [groupIcon, setGroupIcon] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -94,23 +96,30 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
     }
   }, [showAddMembers, chat.members]);
 
-  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIconSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCropSrc(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleCroppedIcon = async (blob: Blob) => {
+    setCropSrc(null);
     setUploadingIcon(true);
-    const ext = file.name.split(".").pop();
-    const path = `group-icons/${chat.id}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    const path = `group-icons/${chat.id}.jpg`;
+    const { error } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
     if (!error) {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      const newIcon = `${data.publicUrl}?t=${Date.now()}`;
-      setGroupIcon(newIcon);
-      // Save icon_url immediately so other members see it via realtime
-      await supabase.from("chat_rooms").update({ icon_url: data.publicUrl }).eq("id", chat.id);
+      const url = data.publicUrl;
+      const busted = `${url}?t=${Date.now()}`;
+      setGroupIcon(busted);
+      // Persist immediately so all members get the realtime update
+      await supabase.from("chat_rooms").update({ icon_url: url }).eq("id", chat.id);
       onRefresh?.();
     }
     setUploadingIcon(false);
-    e.target.value = "";
   };
 
   const saveGroupChanges = async () => {
@@ -232,7 +241,7 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
                         {uploadingIcon ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
                       </div>
                     )}
-                    <input ref={iconRef} type="file" className="hidden" accept="image/*" onChange={handleIconUpload} disabled={!isAdmin} />
+                    <input ref={iconRef} type="file" className="hidden" accept="image/*" onChange={handleIconSelect} disabled={!isAdmin} />
                   </div>
                 ) : (
                   <div className="relative group cursor-pointer" onClick={() => profile?.avatar_url && setAvatarLightbox(true)}>

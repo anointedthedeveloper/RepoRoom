@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+import ImageCropper from "./ImageCropper";
 
 interface ProfileSettingsProps {
   open: boolean;
@@ -14,6 +15,8 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const { mode, theme, wallpaper, setMode, setTheme, setWallpaper } = useThemeContext();
   const wallpaperRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -21,7 +24,7 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [ringtone, setRingtone] = useState("default");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const RINGTONES = [
     { id: "default", label: "Default", freqs: [[880, 0, 0.15], [1100, 0.2, 0.15], [880, 0.4, 0.15]] },
@@ -52,13 +55,21 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
     }
   }, [open, profile]);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCropSrc(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleCroppedAvatar = async (blob: Blob) => {
+    setCropSrc(null);
+    if (!user) return;
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    const path = `${user.id}.jpg`;
+    const { error } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
     if (!error) {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`);
@@ -66,7 +77,6 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
       setMessage("Failed to upload image");
     }
     setUploading(false);
-    e.target.value = "";
   };
 
   const handleSave = async () => {
@@ -89,7 +99,7 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
     setSaving(false);
   };
 
-  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -102,6 +112,9 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
 
   return (
     <AnimatePresence>
+      {cropSrc && (
+        <ImageCropper src={cropSrc} onCrop={handleCroppedAvatar} onCancel={() => setCropSrc(null)} />
+      )}
       {open && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -115,7 +128,6 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
             onClick={(e) => e.stopPropagation()}
             className="bg-card rounded-2xl w-full max-w-sm shadow-2xl border border-border overflow-hidden"
           >
-            {/* Scrollable content */}
             <div className="max-h-[90vh] overflow-y-auto p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-base font-semibold text-foreground">Settings</h2>
@@ -138,7 +150,7 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                     {uploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
                   </div>
                 </div>
-                <input ref={fileRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                <input ref={fileRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarSelect} />
                 <p className="text-[11px] text-muted-foreground mt-2">Click to change photo</p>
               </div>
 
@@ -194,11 +206,11 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Theme</label>
                 <div className="grid grid-cols-5 gap-2">
                   {([
-                    { id: "default", color: "bg-violet-500",  label: "Default" },
-                    { id: "ocean",   color: "bg-cyan-500",    label: "Ocean" },
-                    { id: "forest",  color: "bg-green-500",   label: "Forest" },
-                    { id: "rose",    color: "bg-rose-500",    label: "Rose" },
-                    { id: "doodle",  color: "bg-purple-400",  label: "Doodle" },
+                    { id: "default", color: "bg-violet-500", label: "Default" },
+                    { id: "ocean",   color: "bg-cyan-500",   label: "Ocean" },
+                    { id: "forest",  color: "bg-green-500",  label: "Forest" },
+                    { id: "rose",    color: "bg-rose-500",   label: "Rose" },
+                    { id: "doodle",  color: "bg-purple-400", label: "Doodle" },
                   ] as const).map((t) => (
                     <button key={t.id} onClick={() => setTheme(t.id)}
                       className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-[10px] font-medium transition-all border ${theme === t.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
