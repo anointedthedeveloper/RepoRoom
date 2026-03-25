@@ -62,36 +62,44 @@ const CallOverlay = ({
     setPrevState(callState);
   }, [callState, prevState]);
 
-  // Remote audio
-  useEffect(() => { attachStream(remoteAudioRef.current, remoteStream); }, [remoteStream]);
-
-  // Main video — remote by default, local when swapped
-  // Re-run whenever callType changes (audio→video upgrade)
+  // Remote audio — always attach
   useEffect(() => {
-    if (callState !== "connected") return;
-    attachStream(mainVideoRef.current, swapped ? localStream : remoteStream);
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch(() => {});
+    }
+  }, [remoteStream]);
+
+  // Main video — force re-attach whenever stream or swap changes
+  useEffect(() => {
+    const el = mainVideoRef.current;
+    if (!el) return;
+    const stream = swapped ? localStream : remoteStream;
+    el.srcObject = stream;
+    if (stream) el.play().catch(() => {});
   }, [swapped, localStream, remoteStream, callState, callType]);
 
   // Self PiP
   useEffect(() => {
     if (callState === "receiving") {
-      // Show local camera preview while receiving
       if (callType === "video") {
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
           .then((s) => {
             previewStreamRef.current = s;
-            attachStream(selfPipVideoRef.current, s);
+            const el = selfPipVideoRef.current;
+            if (el) { el.srcObject = s; el.play().catch(() => {}); }
           })
           .catch(() => {});
       }
       return;
     }
-    // Stop any preview stream once call is accepted/ended
     if (previewStreamRef.current) {
       previewStreamRef.current.getTracks().forEach((t) => t.stop());
       previewStreamRef.current = null;
     }
-    attachStream(selfPipVideoRef.current, swapped ? remoteStream : localStream);
+    const el = selfPipVideoRef.current;
+    const stream = swapped ? remoteStream : localStream;
+    if (el) { el.srcObject = stream; if (stream) el.play().catch(() => {}); }
   }, [callState, callType, swapped, localStream, remoteStream]);
 
   // Track remote video active state via remoteVideoOff prop (signalled explicitly)

@@ -9,6 +9,7 @@ import EmptyChatPanel from "@/components/chat/EmptyChatPanel";
 import CallOverlay from "@/components/chat/CallOverlay";
 import UserProfilePanel from "@/components/chat/UserProfilePanel";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 
 const ChatPage = () => {
   const { user, profile } = useAuth();
@@ -77,6 +78,13 @@ const ChatPage = () => {
     const signal = (window as any).__pendingCallSignal;
     if (signal) acceptCall(signal);
   }, [acceptCall]);
+
+  // Show toast when callee is busy on another device
+  useEffect(() => {
+    const handler = () => toast.error("Call not answered", { description: "User is already on a call" });
+    window.addEventListener("call-busy", handler);
+    return () => window.removeEventListener("call-busy", handler);
+  }, []);
 
   // Fetch + subscribe messages for second panel
   useEffect(() => {

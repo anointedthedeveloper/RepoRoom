@@ -27,7 +27,7 @@ const ICE_SERVERS = [
 type CallState = "idle" | "calling" | "receiving" | "connected";
 
 export interface CallSignal {
-  type: "offer" | "answer" | "ice-candidate" | "end-call" | "reject-call" | "video-toggle" | "upgrade-video";
+  type: "offer" | "answer" | "ice-candidate" | "end-call" | "reject-call" | "video-toggle" | "upgrade-video" | "call-busy";
   from: string;
   to: string;
   data?: any;
@@ -540,6 +540,11 @@ export function useWebRTC() {
                 }
                 break;
               }
+              // Already on a call on this device — send busy signal
+              if (callStateRef.current !== "idle") {
+                await sendSignal({ type: "call-busy", to: signal.from });
+                break;
+              }
               // Initial incoming call
               setRemoteUserId(signal.from);
               remoteUserIdRef.current = signal.from;
@@ -593,6 +598,14 @@ export function useWebRTC() {
 
             case "reject-call":
               cleanup("rejected");
+              break;
+
+            case "call-busy":
+              // Callee is already on a call (logged in elsewhere)
+              cleanup("rejected");
+              // Show a toast-like notification — use window alert as fallback
+              console.warn("[WebRTC] Call busy — user is on another call");
+              setTimeout(() => window.dispatchEvent(new CustomEvent("call-busy")), 100);
               break;
 
             case "video-toggle":
