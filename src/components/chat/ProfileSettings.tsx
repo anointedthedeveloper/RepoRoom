@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+import { useGithub } from "@/hooks/useGithub";
 import ImageCropper from "./ImageCropper";
 
 interface ProfileSettingsProps {
@@ -77,6 +78,18 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
     }, 400);
     return () => clearTimeout(timer);
   }, [username, profile?.username, user?.id]);
+
+  const { githubUser, connectWithToken, disconnect, loading: ghLoading, error: ghError } = useGithub();
+  const [ghPat, setGhPat] = useState("");
+  const [ghConnecting, setGhConnecting] = useState(false);
+
+  const handleGhConnect = async () => {
+    if (!ghPat.trim()) return;
+    setGhConnecting(true);
+    await connectWithToken(ghPat.trim());
+    setGhConnecting(false);
+    setGhPat("");
+  };
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -282,6 +295,45 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* GitHub Integration */}
+              <div className="mb-5">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">GitHub Integration</label>
+                {githubUser ? (
+                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-green-500/30 bg-green-500/5">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-foreground" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                      </svg>
+                      <div>
+                        <p className="text-xs font-medium text-foreground">Connected as @{githubUser}</p>
+                        <p className="text-[10px] text-green-500">GitHub active</p>
+                      </div>
+                    </div>
+                    <button onClick={disconnect} className="text-xs text-destructive hover:opacity-80 transition-opacity">Disconnect</button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={ghPat}
+                        onChange={(e) => setGhPat(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleGhConnect()}
+                        type="password"
+                        placeholder="Paste GitHub token (ghp_...)" 
+                        className="flex-1 bg-muted text-xs text-foreground placeholder:text-muted-foreground rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-primary font-mono"
+                      />
+                      <button onClick={handleGhConnect} disabled={!ghPat.trim() || ghConnecting}
+                        className="px-3 py-2 rounded-xl gradient-primary text-xs text-white font-medium disabled:opacity-40 shrink-0">
+                        {ghConnecting ? "..." : "Connect"}
+                      </button>
+                    </div>
+                    {ghError && <p className="text-[11px] text-destructive">{ghError}</p>}
+                    <a href="https://github.com/settings/tokens/new?scopes=repo,read:user" target="_blank" rel="noopener noreferrer"
+                      className="text-[11px] text-primary hover:underline block">Generate a token on GitHub →</a>
+                  </div>
+                )}
               </div>
 
               {/* Chat Wallpaper */}
