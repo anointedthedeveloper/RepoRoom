@@ -11,7 +11,7 @@ import UserProfilePanel from "@/components/chat/UserProfilePanel";
 import { AnimatePresence, motion } from "framer-motion";
 
 const ChatPage = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [secondChatId, setSecondChatId] = useState<string | null>(null);
@@ -23,10 +23,14 @@ const ChatPage = () => {
     isOtherTyping, sendTyping, fetchChatRooms,
   } = useChat();
 
-  const {
-    callState, callType, remoteUsername, localStream, remoteStream,
+  const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
     callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
   } = useWebRTC();
+
+  // Resolve remote user's avatar from any chat room they're in
+  const remoteAvatarUrl = chatRooms
+    .flatMap((r) => r.members)
+    .find((m) => m.user_id === remoteUserId)?.profiles?.avatar_url ?? null;
 
   const handleCreateDM = useCallback(async (userId: string) => {
     const roomId = await createDirectMessage(userId);
@@ -189,6 +193,9 @@ const ChatPage = () => {
             callState={callState}
             callType={callType}
             remoteUsername={remoteUsername}
+            remoteAvatarUrl={remoteAvatarUrl}
+            localAvatarUrl={profile?.avatar_url ?? null}
+            localUsername={profile?.display_name || profile?.username || "You"}
             localStream={localStream}
             remoteStream={remoteStream}
             callDuration={callDuration}
