@@ -39,6 +39,7 @@ const WorkspacePage = () => {
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const [showGithub, setShowGithub] = useState(false);
   const [showCreateWs, setShowCreateWs] = useState(false);
   const [showJoinWs, setShowJoinWs] = useState(false);
   const [showCreateCh, setShowCreateCh] = useState(false);
@@ -189,6 +190,13 @@ const WorkspacePage = () => {
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted">
               <UserPlus className="h-3.5 w-3.5" /> Add people
             </button>
+            <button onClick={() => setShowGithub(v => !v)}
+              title="GitHub"
+              className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
+                showGithub ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}>
+              <Github className="h-4 w-4" />
+            </button>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users className="h-3.5 w-3.5" />{members.length}
             </div>
@@ -284,6 +292,15 @@ const WorkspacePage = () => {
                   onCreateTask={(title, desc) => createTask(activeWorkspace.id, title, desc, activeChannel?.id)}
                   onClose={() => setShowTasks(false)}
                 />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* GitHub panel */}
+          <AnimatePresence>
+            {showGithub && (
+              <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden shrink-0">
+                <GithubPanel onClose={() => setShowGithub(false)} />
               </motion.div>
             )}
           </AnimatePresence>
