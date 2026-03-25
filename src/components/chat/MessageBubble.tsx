@@ -199,7 +199,6 @@ const MessageBubble = ({ message, isMine, selected, onSelect, onReply, onEdit, o
         transition={{ duration: 0.15, ease: [0.34, 1.56, 0.64, 1] }}
         className={`flex ${isMine ? "justify-end" : "justify-start"} px-4 py-0.5 group transition-colors ${selected ? "bg-primary/10" : ""}`}
         onDoubleClick={() => !isDeleted && !onSelect && onReply?.(message)}
-        onLongPress={() => onSelect?.(message.id)}
         onClick={handleTap}
       >
         <div className="flex flex-col max-w-[72%]">

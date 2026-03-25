@@ -415,12 +415,28 @@ export function useWebRTC() {
       setLocalStream(newStream);
       callTypeRef.current = "video";
       setCallType("video");
+
       const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
       for (const pc of allPCs) {
-        for (const track of newStream.getTracks()) {
-          const sender = pc.getSenders().find((s) => s.track?.kind === track.kind);
-          if (sender) await sender.replaceTrack(track).catch(() => {});
-          else pc.addTrack(track, newStream);
+        // Add video track (audio track already exists)
+        const videoTrack = newStream.getVideoTracks()[0];
+        const audioTrack = newStream.getAudioTracks()[0];
+        const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+        const audioSender = pc.getSenders().find((s) => s.track?.kind === "audio");
+        if (videoSender) {
+          await videoSender.replaceTrack(videoTrack).catch(() => {});
+        } else {
+          pc.addTrack(videoTrack, newStream);
+        }
+        if (audioSender && audioTrack) {
+          await audioSender.replaceTrack(audioTrack).catch(() => {});
+        }
+        // Renegotiate so remote peer receives the new video track
+        const rid = remoteUserIdRef.current;
+        if (rid && pc.signalingState === "stable") {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await sendSignal({ type: "offer", to: rid, data: pc.localDescription, callType: "video" });
         }
       }
       // Notify remote to also upgrade — only if we initiated
@@ -507,6 +523,23 @@ export function useWebRTC() {
 
           switch (signal.type) {
             case "offer":
+              // Mid-call renegotiation (e.g. audio→video upgrade)
+              if (callStateRef.current === "connected") {
+                const pc = peerConnections.current.get(signal.from) || peerConnection.current;
+                if (pc) {
+                  if (signal.callType === "video") {
+                    callTypeRef.current = "video";
+                    setCallType("video");
+                  }
+                  await pc.setRemoteDescription(new RTCSessionDescription(signal.data))
+                    .catch((e) => console.error("[WebRTC] renegotiate setRemoteDescription error:", e));
+                  const answer = await pc.createAnswer();
+                  await pc.setLocalDescription(answer);
+                  await sendSignal({ type: "answer", to: signal.from, data: pc.localDescription });
+                }
+                break;
+              }
+              // Initial incoming call
               setRemoteUserId(signal.from);
               remoteUserIdRef.current = signal.from;
               setRemoteUsername(signal.fromUsername || "Unknown");
