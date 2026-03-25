@@ -62,22 +62,19 @@ const ImageCropper = ({ src, onCrop, onCancel, size = 400 }: ImageCropperProps) 
     const iy = CANVAS / 2 - ih / 2 + offset.y;
     ctx.drawImage(img, ix, iy, iw, ih);
 
-    // Dim outside circle
+    // Dim outside square crop area
+    const pad = 4;
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 0, CANVAS, CANVAS);
     ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(CANVAS / 2, CANVAS / 2, CANVAS / 2 - 4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
     ctx.restore();
 
-    // Circle border
+    // Square border
     ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(CANVAS / 2, CANVAS / 2, CANVAS / 2 - 4, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.strokeRect(pad, pad, CANVAS - pad * 2, CANVAS - pad * 2);
   }, [scale, offset, imgNaturalSize]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -105,11 +102,6 @@ const ImageCropper = ({ src, onCrop, onCancel, size = 400 }: ImageCropperProps) 
     out.width = size;
     out.height = size;
     const ctx = out.getContext("2d")!;
-
-    // Clip to circle
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-    ctx.clip();
 
     // Scale from display canvas to output size
     const ratio = size / CANVAS;
@@ -146,7 +138,7 @@ const ImageCropper = ({ src, onCrop, onCancel, size = 400 }: ImageCropperProps) 
           ref={canvasRef}
           width={CANVAS}
           height={CANVAS}
-          className="rounded-full cursor-grab active:cursor-grabbing touch-none"
+          className="rounded-lg cursor-grab active:cursor-grabbing touch-none"
           style={{ width: CANVAS, height: CANVAS }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

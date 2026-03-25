@@ -110,20 +110,31 @@ const UserProfilePanel = ({ chat, open, onClose, onStartCall, onRefresh, onRemov
     setCropSrc(null);
     setUploadingIcon(true);
     setIconError(null);
-    const path = `group-icons/${chat.id}-${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from("chat-attachments").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+    // Use a fixed path per group so the same URL always works (overwrite)
+    const path = `group-icons/${chat.id}.jpg`;
+    const { error } = await supabase.storage
+      .from("chat-attachments")
+      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
     if (error) {
       setIconError(`Upload failed: ${error.message}`);
       setUploadingIcon(false);
       return;
     }
     const { data } = supabase.storage.from("chat-attachments").getPublicUrl(path);
+    // Append cache-buster so browser fetches the new image
     const url = data.publicUrl;
     const busted = `${url}?t=${Date.now()}`;
-    setGroupIcon(busted);
-    const { error: updateError } = await supabase.from("chat_rooms").update({ icon_url: url }).eq("id", chat.id);
-    if (updateError) setIconError(`Saved icon but failed to update group: ${updateError.message}`);
-    else onRefresh?.();
+    // Update DB with the clean URL (no cache-buster)
+    const { error: updateError } = await supabase
+      .from("chat_rooms")
+      .update({ icon_url: busted })
+      .eq("id", chat.id);
+    if (updateError) {
+      setIconError(`Upload OK but DB update failed: ${updateError.message}`);
+    } else {
+      setGroupIcon(busted);
+      onRefresh?.();
+    }
     setUploadingIcon(false);
   };
 
