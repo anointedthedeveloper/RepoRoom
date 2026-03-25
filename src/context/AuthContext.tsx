@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       options: {
         data: { username, display_name: username },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: undefined,
       },
     });
     return { error: error as Error | null };
