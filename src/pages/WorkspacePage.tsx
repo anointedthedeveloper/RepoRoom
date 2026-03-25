@@ -43,6 +43,7 @@ const WorkspacePage = () => {
   const [showGithub, setShowGithub] = useState(false);
   const [showFileBrowser, setShowFileBrowser] = useState(false);
   const [fileBrowserRepo, setFileBrowserRepo] = useState<{ owner: string; repo: string; branch: string } | null>(null);
+  const [githubIssueFrom, setGithubIssueFrom] = useState<{ title: string; body: string } | null>(null);
   const [showCreateWs, setShowCreateWs] = useState(false);
   const [showJoinWs, setShowJoinWs] = useState(false);
   const [showCreateCh, setShowCreateCh] = useState(false);
@@ -255,6 +256,7 @@ const WorkspacePage = () => {
                     isMine={msg.sender_id === user?.id}
                     reactions={[]}
                     onForward={() => handleConvertToTask(msg.id, msg.content)}
+                    onReply={() => {}}
                   />
                 );
               })}
@@ -309,6 +311,8 @@ const WorkspacePage = () => {
               <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden shrink-0">
                 <GithubPanel
                   onClose={() => setShowGithub(false)}
+                  createIssueFrom={githubIssueFrom}
+                  onIssueDone={() => setGithubIssueFrom(null)}
                   onOpenFiles={(owner, repo, branch) => {
                     setFileBrowserRepo({ owner, repo, branch });
                     setShowFileBrowser(true);

@@ -112,6 +112,46 @@ export function useGithub() {
     } catch { return []; }
   }, [ghFetch]);
 
+  const createIssue = useCallback(async (owner: string, repo: string, title: string, body?: string): Promise<{ number: number; html_url: string } | null> => {
+    if (!token) return null;
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+        method: "POST",
+        headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body: body || "" }),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    } catch { return null; }
+  }, [token]);
+
+  const fetchPRs = useCallback(async (owner: string, repo: string) => {
+    try {
+      return await ghFetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=10`);
+    } catch { return []; }
+  }, [ghFetch]);
+
+  const fetchBranches = useCallback(async (owner: string, repo: string) => {
+    try {
+      return await ghFetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=20`);
+    } catch { return []; }
+  }, [ghFetch]);
+
+  const commitFile = useCallback(async (
+    owner: string, repo: string, path: string, content: string, message: string, sha: string, branch: string
+  ): Promise<boolean> => {
+    if (!token) return false;
+    try {
+      const encoded = btoa(unescape(encodeURIComponent(content)));
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+        method: "PUT",
+        headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ message, content: encoded, sha, branch }),
+      });
+      return res.ok;
+    } catch { return false; }
+  }, [token]);
+
   // Parse a GitHub URL into owner/repo
   const parseGithubUrl = useCallback((url: string): { owner: string; repo: string } | null => {
     const match = url.match(/github\.com\/([^/]+)\/([^/\s?#]+)/);
@@ -122,6 +162,8 @@ export function useGithub() {
   return {
     token, githubUser, repos, loading, error,
     connectWithToken, disconnect, fetchRepos,
-    fetchRepoPreview, fetchCommits, fetchIssues, parseGithubUrl,
+    fetchRepoPreview, fetchCommits, fetchIssues,
+    createIssue, fetchPRs, fetchBranches, commitFile,
+    parseGithubUrl,
   };
 }
