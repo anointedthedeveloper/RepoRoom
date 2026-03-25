@@ -27,7 +27,8 @@ const ChatPage = () => {
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
-    callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
+    callDuration, isScreenSharing, startCall, startGroupCall, acceptCall, rejectCall, endCall,
+    toggleMute, toggleVideo, startScreenShare, stopScreenShare,
   } = useWebRTC();
 
   // Resolve remote user's avatar from any chat room they're in
@@ -230,11 +231,14 @@ const ChatPage = () => {
             localStream={localStream}
             remoteStream={remoteStream}
             callDuration={callDuration}
+            isScreenSharing={isScreenSharing}
             onAccept={handleAcceptCall}
             onEnd={endCall}
             onReject={rejectCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
+            onStartScreenShare={startScreenShare}
+            onStopScreenShare={stopScreenShare}
           />
         )}
       </AnimatePresence>

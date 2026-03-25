@@ -6,7 +6,22 @@ import { getAudioContext } from "@/lib/sounds";
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "stun:stun2.l.google.com:19302" },
+  // Free TURN via Open Relay Project — works on most networks including mobile/NAT
+  {
+    urls: "turn:openrelay.metered.ca:80",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
 ];
 
 type CallState = "idle" | "calling" | "receiving" | "connected";
@@ -21,7 +36,6 @@ export interface CallSignal {
   chatRoomId?: string;
 }
 
-// Single persistent AudioContext shared with sounds.ts
 function createRingtone() {
   let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -55,7 +69,7 @@ function createRingtone() {
     const ctx = getAudioContext();
     if (!ctx) return;
     if (ctx.state === "running") { playTone(ctx); }
-    else { ctx.resume().then(() => playTone(ctx)).catch((e) => console.error("[Ringtone] resume error:", e)); }
+    else { ctx.resume().then(() => playTone(ctx)).catch(() => {}); }
   };
 
   return {
@@ -73,6 +87,7 @@ export function useWebRTC() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -81,12 +96,12 @@ export function useWebRTC() {
   const callStartTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const ringtoneRef = useRef(createRingtone());
   const callTypeRef = useRef<"audio" | "video">("audio");
-  const callStateRef = useRef<CallState>("idle"); // ref to avoid stale closure
+  const callStateRef = useRef<CallState>("idle");
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
 
-  // Keep ref in sync
   useEffect(() => { callStateRef.current = callState; }, [callState]);
 
   const sendCallMessage = useCallback(async (roomId: string, text: string, type: "call/audio" | "call/video") => {
@@ -108,6 +123,8 @@ export function useWebRTC() {
     peerConnections.current.clear();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
     const roomId = chatRoomIdRef.current;
@@ -127,6 +144,7 @@ export function useWebRTC() {
     setRemoteStream(null);
     setCallState("idle");
     setRemoteUserId(null);
+    setIsScreenSharing(false);
     remoteUserIdRef.current = null;
     chatRoomIdRef.current = null;
     callStartTimeRef.current = 0;
@@ -147,38 +165,69 @@ export function useWebRTC() {
     });
   }, [user, profile]);
 
+  const onConnected = useCallback(() => {
+    if (callStateRef.current === "connected") return;
+    ringtoneRef.current.stop();
+    setCallState("connected");
+    callStartTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
+  }, []);
+
   const createPeerConnection = useCallback((targetUserId: string, forGroup = false) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
     pc.onicecandidate = (e) => {
       if (e.candidate) {
-        console.log("[WebRTC] sending ICE candidate to", targetUserId);
-        sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate });
+        sendSignal({ type: "ice-candidate", to: targetUserId, data: e.candidate.toJSON() });
       }
     };
-    pc.ontrack = (e) => {
-      console.log("[WebRTC] ontrack fired, streams:", e.streams.length);
-      const stream = e.streams[0];
-      setRemoteStream(stream);
-      stream.onaddtrack = () => setRemoteStream(new MediaStream(stream.getTracks()));
+
+    pc.oniceconnectionstatechange = () => {
+      console.log("[WebRTC] iceConnectionState:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+        onConnected();
+      } else if (pc.iceConnectionState === "failed") {
+        console.warn("[WebRTC] ICE failed — attempting restart");
+        pc.restartIce();
+      } else if (pc.iceConnectionState === "disconnected") {
+        // Give it 5s to recover before ending
+        setTimeout(() => {
+          if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+            cleanup("ended");
+          }
+        }, 5000);
+      }
     };
+
     pc.onconnectionstatechange = () => {
       console.log("[WebRTC] connectionState:", pc.connectionState);
-      if (pc.connectionState === "connected") {
-        ringtoneRef.current.stop();
-        setCallState("connected");
-        callStartTimeRef.current = Date.now();
-        timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
-      } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-        cleanup("ended");
+      if (pc.connectionState === "connected") onConnected();
+      else if (pc.connectionState === "failed") cleanup("ended");
+    };
+
+    pc.ontrack = (e) => {
+      console.log("[WebRTC] ontrack:", e.track.kind, "streams:", e.streams.length);
+      if (e.streams && e.streams[0]) {
+        setRemoteStream(e.streams[0]);
+      } else {
+        // Fallback: build stream from track
+        const existing = remoteStream;
+        if (existing) {
+          existing.addTrack(e.track);
+          setRemoteStream(new MediaStream(existing.getTracks()));
+        } else {
+          setRemoteStream(new MediaStream([e.track]));
+        }
       }
     };
+
     if (forGroup) {
       peerConnections.current.set(targetUserId, pc);
     } else {
       peerConnection.current = pc;
     }
     return pc;
-  }, [sendSignal, cleanup]);
+  }, [sendSignal, cleanup, onConnected, remoteStream]);
 
   const getOrCreateCallRoom = useCallback(async (otherUserId: string): Promise<string | null> => {
     if (!user) return null;
@@ -216,22 +265,28 @@ export function useWebRTC() {
     chatRoomIdRef.current = roomId;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: type === "video" ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+      });
       localStreamRef.current = stream;
       setLocalStream(stream);
+
       const pc = createPeerConnection(targetUserId);
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-      const offer = await pc.createOffer();
+      stream.getTracks().forEach((t) => {
+        console.log("[WebRTC] addTrack (caller):", t.kind);
+        pc.addTrack(t, stream);
+      });
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === "video" });
       await pc.setLocalDescription(offer);
-      console.log("[WebRTC] offer sent to", targetUserId);
-      await sendSignal({ type: "offer", to: targetUserId, data: offer, callType: type, chatRoomId: roomId || undefined });
+      await sendSignal({ type: "offer", to: targetUserId, data: pc.localDescription, callType: type, chatRoomId: roomId || undefined });
     } catch (err) {
       console.error("[WebRTC] startCall failed:", err);
       cleanup("no-answer");
     }
   }, [user, createPeerConnection, sendSignal, cleanup, getOrCreateCallRoom]);
 
-  // startGroupCall — sends offer to all members
   const startGroupCall = useCallback(async (memberIds: string[], type: "audio" | "video", chatRoomId: string) => {
     if (!user) return;
     callTypeRef.current = type;
@@ -241,17 +296,19 @@ export function useWebRTC() {
     ringtoneRef.current.start();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: type === "video" ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+      });
       localStreamRef.current = stream;
       setLocalStream(stream);
 
-      // Send offer to each member — each gets its own RTCPeerConnection
       for (const memberId of memberIds) {
         const pc = createPeerConnection(memberId, true);
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === "video" });
         await pc.setLocalDescription(offer);
-        await sendSignal({ type: "offer", to: memberId, data: offer, callType: type, chatRoomId });
+        await sendSignal({ type: "offer", to: memberId, data: pc.localDescription, callType: type, chatRoomId });
       }
       setRemoteUserId(memberIds[0]);
       remoteUserIdRef.current = memberIds[0];
@@ -261,7 +318,6 @@ export function useWebRTC() {
     }
   }, [user, createPeerConnection, sendSignal, cleanup]);
 
-  // acceptCall takes the stored signal directly — no window lookup needed
   const acceptCall = useCallback(async (signal: CallSignal) => {
     if (!user || !signal.data) return;
     ringtoneRef.current.stop();
@@ -273,21 +329,30 @@ export function useWebRTC() {
     if (signal.chatRoomId) chatRoomIdRef.current = signal.chatRoomId;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === "video" });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: type === "video" ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+      });
       localStreamRef.current = stream;
       setLocalStream(stream);
+
       const pc = createPeerConnection(signal.from);
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      stream.getTracks().forEach((t) => {
+        console.log("[WebRTC] addTrack (callee):", t.kind);
+        pc.addTrack(t, stream);
+      });
+
       await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-      // Flush any queued ICE candidates
+
+      // Flush queued ICE candidates
       for (const c of iceCandidateQueue.current) {
-        await pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] queued ICE (accept) error:", e));
+        await pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] queued ICE error:", e));
       }
       iceCandidateQueue.current = [];
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      console.log("[WebRTC] answer sent to", signal.from);
-      await sendSignal({ type: "answer", to: signal.from, data: answer });
+      await sendSignal({ type: "answer", to: signal.from, data: pc.localDescription });
     } catch (err) {
       console.error("[WebRTC] acceptCall failed:", err);
       cleanup("ended");
@@ -314,28 +379,42 @@ export function useWebRTC() {
     localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
   }, []);
 
-  // Replace video track in all peer connections (for screen share)
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
-    const allPCs = [
-      peerConnection.current,
-      ...Array.from(peerConnections.current.values()),
-    ].filter(Boolean) as RTCPeerConnection[];
-
+    const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
     for (const pc of allPCs) {
       const sender = pc.getSenders().find((s) => s.track?.kind === "video");
       if (sender) {
-        if (newTrack) {
-          await sender.replaceTrack(newTrack).catch(() => {});
-        } else {
-          // Restore original camera track
-          const camTrack = localStreamRef.current?.getVideoTracks()[0];
-          if (camTrack) await sender.replaceTrack(camTrack).catch(() => {});
-        }
+        const track = newTrack ?? localStreamRef.current?.getVideoTracks()[0] ?? null;
+        if (track) await sender.replaceTrack(track).catch(() => {});
       }
     }
   }, []);
 
-  // Single stable channel — no callState in deps
+  const startScreenShare = useCallback(async () => {
+    try {
+      const screen = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: false });
+      screenStreamRef.current = screen;
+      const screenTrack = screen.getVideoTracks()[0];
+      await replaceVideoTrack(screenTrack);
+      setIsScreenSharing(true);
+      screenTrack.onended = async () => {
+        await replaceVideoTrack(null);
+        screenStreamRef.current = null;
+        setIsScreenSharing(false);
+      };
+    } catch (err) {
+      console.error("[WebRTC] screen share failed:", err);
+    }
+  }, [replaceVideoTrack]);
+
+  const stopScreenShare = useCallback(async () => {
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    await replaceVideoTrack(null);
+    setIsScreenSharing(false);
+  }, [replaceVideoTrack]);
+
+  // Signal listener
   useEffect(() => {
     if (!user) return;
 
@@ -355,9 +434,10 @@ export function useWebRTC() {
             chatRoomId: row.chat_room_id,
           };
 
+          console.log("[WebRTC] signal received:", signal.type, "from:", signal.from);
+
           switch (signal.type) {
             case "offer":
-              console.log("[WebRTC] incoming offer from", signal.from, "type:", signal.callType);
               setRemoteUserId(signal.from);
               remoteUserIdRef.current = signal.from;
               setRemoteUsername(signal.fromUsername || "Unknown");
@@ -365,7 +445,6 @@ export function useWebRTC() {
               setCallType(signal.callType || "audio");
               setCallState("receiving");
               if (signal.chatRoomId) chatRoomIdRef.current = signal.chatRoomId;
-              // Store full signal for accept
               (window as any).__pendingCallSignal = signal;
               ringtoneRef.current.start();
               if (document.hidden && "Notification" in window && Notification.permission === "granted") {
@@ -380,15 +459,13 @@ export function useWebRTC() {
 
             case "answer": {
               const pc = peerConnections.current.get(signal.from) || peerConnection.current;
-              if (pc) {
-                console.log("[WebRTC] setRemoteDescription (answer), state:", pc.signalingState);
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.data)).catch((e) => console.error("[WebRTC] setRemoteDescription error:", e));
+              if (pc && pc.signalingState === "have-local-offer") {
+                await pc.setRemoteDescription(new RTCSessionDescription(signal.data))
+                  .catch((e) => console.error("[WebRTC] setRemoteDescription (answer) error:", e));
                 for (const c of iceCandidateQueue.current) {
-                  await pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] queued ICE error:", e));
+                  await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
                 }
                 iceCandidateQueue.current = [];
-              } else {
-                console.warn("[WebRTC] answer received but no peer connection found");
               }
               break;
             }
@@ -396,16 +473,15 @@ export function useWebRTC() {
             case "ice-candidate": {
               const pc = peerConnections.current.get(signal.from) || peerConnection.current;
               if (pc?.remoteDescription) {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.data)).catch((e) => console.error("[WebRTC] addIceCandidate error:", e));
+                await pc.addIceCandidate(new RTCIceCandidate(signal.data))
+                  .catch((e) => console.error("[WebRTC] addIceCandidate error:", e));
               } else {
-                console.log("[WebRTC] queuing ICE candidate (no remoteDescription yet)");
                 iceCandidateQueue.current.push(signal.data);
               }
               break;
             }
 
             case "end-call":
-              // Use ref to avoid stale closure
               if (callStateRef.current === "calling") cleanup("no-answer");
               else cleanup("ended");
               break;
@@ -421,7 +497,7 @@ export function useWebRTC() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, cleanup]); // no callState dep — use callStateRef instead
+  }, [user, cleanup]);
 
   useEffect(() => {
     if (callState === "idle") return;
@@ -434,7 +510,8 @@ export function useWebRTC() {
 
   return {
     callState, callType, remoteUserId, remoteUsername,
-    localStream, remoteStream, callDuration,
-    startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo, replaceVideoTrack,
+    localStream, remoteStream, callDuration, isScreenSharing,
+    startCall, startGroupCall, acceptCall, rejectCall, endCall,
+    toggleMute, toggleVideo, replaceVideoTrack, startScreenShare, stopScreenShare,
   };
 }
