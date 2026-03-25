@@ -420,7 +420,24 @@ export function useChat() {
   );
 
   const acceptRequest = useCallback(async (chatRoomId: string) => {
-    await supabase.from("chat_rooms").update({ status: "accepted" } as any).eq("id", chatRoomId);
+    // Optimistically update local state immediately
+    setChatRooms((prev) =>
+      prev.map((r) =>
+        r.id === chatRoomId ? { ...r, isPending: false, isRequester: false, status: "accepted" } : r
+      )
+    );
+    const { error } = await supabase
+      .from("chat_rooms")
+      .update({ status: "accepted" } as any)
+      .eq("id", chatRoomId);
+    if (error) {
+      // Rollback on failure
+      setChatRooms((prev) =>
+        prev.map((r) =>
+          r.id === chatRoomId ? { ...r, isPending: true, status: "pending" } : r
+        )
+      );
+    }
     await fetchChatRooms();
   }, [fetchChatRooms]);
 
