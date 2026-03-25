@@ -31,8 +31,11 @@ const CallOverlay = ({
   localStream, remoteStream, callDuration, isScreenSharing,
   onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
+  // mainVideoRef  = full-screen video (remote normally, local when swapped)
+  // selfVideoRef  = PiP self-preview (local normally, remote when swapped)
+  // previewRef    = camera preview shown to receiver before accepting
   const mainVideoRef   = useRef<HTMLVideoElement>(null);
-  const pipVideoRef    = useRef<HTMLVideoElement>(null);
+  const selfVideoRef   = useRef<HTMLVideoElement>(null);
   const previewRef     = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
@@ -60,17 +63,15 @@ const CallOverlay = ({
     if (v) setIsVideoOff(!v.enabled);
   }, [localStream]);
 
-  // Wire remote audio — separate from video so it always plays
+  // Remote audio — always plays regardless of video state
   useEffect(() => {
     const el = remoteAudioRef.current;
     if (!el) return;
     el.srcObject = remoteStream;
-    if (remoteStream) {
-      el.play().catch(() => {});
-    }
+    if (remoteStream) el.play().catch(() => {});
   }, [remoteStream]);
 
-  // Wire main video (remote or local when swapped)
+  // Main video: remote (default) or local (when swapped)
   useEffect(() => {
     const el = mainVideoRef.current;
     if (!el) return;
@@ -78,9 +79,10 @@ const CallOverlay = ({
     if (el.srcObject) el.play().catch(() => {});
   }, [swapped, localStream, remoteStream]);
 
-  // Wire PiP video (local or remote when swapped)
+  // Self PiP: local (default) or remote (when swapped)
+  // Shown as soon as localStream exists — covers calling + connected states
   useEffect(() => {
-    const el = pipVideoRef.current;
+    const el = selfVideoRef.current;
     if (!el) return;
     el.srcObject = swapped ? remoteStream : localStream;
     if (el.srcObject) el.play().catch(() => {});
@@ -132,7 +134,10 @@ const CallOverlay = ({
 
   const isVideo     = callType === "video";
   const isConnected = callState === "connected";
-  const showVideo   = isVideo && isConnected;
+  // Show full-screen remote video only when connected
+  const showMainVideo = isVideo && isConnected;
+  // Show self PiP as soon as we have a local stream during a video call
+  const showSelfPip = isVideo && !!localStream && (callState === "calling" || callState === "connected");
 
   const wa = (fn: () => void) => () => { unlockAudio(); fn(); };
 
@@ -143,65 +148,64 @@ const CallOverlay = ({
       : <div className={`${sz} rounded-full gradient-primary flex items-center justify-center font-bold text-white shadow-2xl`}>{name[0]?.toUpperCase() || "?"}</div>;
   };
 
+  // What the PiP label and avatar fallback should show
+  const pipLabel    = swapped ? remoteUsername : "You";
+  const pipAvatarUrl = swapped ? remoteAvatarUrl : localAvatarUrl;
+  const pipAvatarName = swapped ? remoteUsername : (localUsername || "You");
+  const pipCameraOff = swapped ? !remoteVideoActive : isVideoOff;
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col select-none"
     >
       {/* Background */}
-      <div className={`absolute inset-0 ${showVideo ? "bg-black" : "bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900"}`} />
+      <div className={`absolute inset-0 ${showMainVideo ? "bg-black" : "bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900"}`} />
 
-      {/* Main video */}
-      <video ref={mainVideoRef} autoPlay playsInline muted={!swapped}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideo ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      {/* Main full-screen video (remote when connected, hidden otherwise) */}
+      <video ref={mainVideoRef} autoPlay playsInline muted={swapped}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showMainVideo ? "opacity-100" : "opacity-0 pointer-events-none"}`}
       />
 
-      {/* Avatar overlays when camera off */}
-      {showVideo && (
-        <>
-          {!swapped && !remoteVideoActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 z-10">
-              <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
-              <span className="text-white/60 text-sm">{remoteUsername} turned off camera</span>
-            </div>
-          )}
-          {swapped && isVideoOff && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 z-10">
-              <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} />
-              <span className="text-white/60 text-sm">Your camera is off</span>
-            </div>
-          )}
-        </>
+      {/* Avatar overlay on main when remote camera is off */}
+      {showMainVideo && !swapped && !remoteVideoActive && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 z-10">
+          <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
+          <span className="text-white/60 text-sm">{remoteUsername} turned off camera</span>
+        </div>
+      )}
+      {showMainVideo && swapped && isVideoOff && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 z-10">
+          <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} />
+          <span className="text-white/60 text-sm">Your camera is off</span>
+        </div>
       )}
 
-      {/* PiP — tap to swap */}
-      {showVideo && (
+      {/* Self PiP — visible as soon as local stream is available (calling + connected) */}
+      {showSelfPip && (
         <motion.div
-          className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl cursor-pointer"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute z-20 rounded-2xl overflow-hidden border-2 border-primary shadow-2xl"
           style={{ bottom: 130, right: 16, width: 108, height: 78 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSwap}
-          title="Tap to swap"
+          whileTap={isConnected ? { scale: 0.95 } : undefined}
+          onClick={isConnected ? handleSwap : undefined}
+          title={isConnected ? "Tap to swap" : "Your camera preview"}
         >
-          <video ref={pipVideoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
-          {!swapped && isVideoOff && (
+          <video ref={selfVideoRef} autoPlay playsInline muted className="w-full h-full object-cover bg-black" />
+          {pipCameraOff && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/85">
-              <AvatarCircle url={localAvatarUrl} name={localUsername || "You"} size="sm" />
-            </div>
-          )}
-          {swapped && !remoteVideoActive && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/85">
-              <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} size="sm" />
+              <AvatarCircle url={pipAvatarUrl} name={pipAvatarName} size="sm" />
             </div>
           )}
           <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
             <span className="text-[9px] text-white/70 bg-black/50 px-1.5 py-0.5 rounded-full">
-              {swapped ? remoteUsername : "You"} · tap
+              {pipLabel}{isConnected ? " · tap" : ""}
             </span>
           </div>
         </motion.div>
       )}
 
-      {/* Camera preview before accepting */}
+      {/* Camera preview before accepting a video call */}
       <div
         className={`absolute z-20 rounded-xl overflow-hidden border-2 border-white/30 shadow-xl bg-black transition-all duration-300 ${
           callState === "receiving" && isVideo ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -245,7 +249,6 @@ const CallOverlay = ({
             <span className="text-white text-sm font-medium">{fmt(callDuration)}</span>
           </div>
         )}
-        {/* Audio call avatar when connected */}
         {isConnected && !isVideo && (
           <div className="flex flex-col items-center gap-3">
             <AvatarCircle url={remoteAvatarUrl} name={remoteUsername} />
