@@ -25,7 +25,7 @@ const ChatPage = () => {
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
-    callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo, replaceVideoTrack,
+    callDuration, startCall, startGroupCall, acceptCall, rejectCall, endCall, toggleMute, toggleVideo,
   } = useWebRTC();
 
   // Resolve remote user's avatar from any chat room they're in
@@ -220,7 +220,6 @@ const ChatPage = () => {
             onReject={rejectCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
-            onReplaceVideoTrack={replaceVideoTrack}
           />
         )}
       </AnimatePresence>
