@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply, Columns2 } from "lucide-react";
+import { Send, Smile, Paperclip, Phone, Video, ChevronLeft, Info, Mic, X, Reply } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import { useThemeContext } from "@/context/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Sounds } from "@/lib/sounds";
 import MessageBubble from "./MessageBubble";
 import AvatarBubble from "./AvatarBubble";
 import EmojiPicker from "./EmojiPicker";
@@ -54,6 +56,8 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   const [replyTo, setReplyTo] = useState<ReplyState | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const { wallpaper } = useThemeContext();
+  const prevMsgCount = useRef(messages.length);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +66,15 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
+
+  // Play sound on new incoming message
+  useEffect(() => {
+    if (messages.length > prevMsgCount.current) {
+      const newest = messages[messages.length - 1];
+      if (newest?.sender_id !== user?.id) Sounds.message();
+    }
+    prevMsgCount.current = messages.length;
+  }, [messages, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,6 +118,7 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
     setInput("");
     setReplyTo(null);
     setUploading(false);
+    Sounds.sent();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -178,7 +192,10 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
   const hasInput = input.trim() || selectedFile;
 
   return (
-    <div className="h-full flex flex-col bg-background min-w-0">
+    <div
+      className={`h-full flex flex-col bg-background min-w-0 ${wallpaper ? "chat-wallpaper" : ""}`}
+      style={wallpaper ? { backgroundImage: `url(${wallpaper})` } : undefined}
+    >
       {/* Header */}
       <div className="px-3 py-3 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -202,6 +219,10 @@ const ChatPanel = ({ chat, messages, onSendMessage, onStartCall, onTyping, isOth
           </button>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {/* Message count badge */}
+          {messages.length > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{messages.length}</span>
+          )}
           {isSecondPanel && (
             <>
               <button onClick={onToggleSecondProfile} className={`h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground`}>

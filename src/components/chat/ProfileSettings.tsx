@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Camera, Loader2, LogOut } from "lucide-react";
+import { X, Camera, Loader2, LogOut, Image } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -12,7 +12,8 @@ interface ProfileSettingsProps {
 
 const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
   const { user, profile, refreshProfile, signOut } = useAuth();
-  const { mode, theme, setMode, setTheme } = useThemeContext();
+  const { mode, theme, wallpaper, setMode, setTheme, setWallpaper } = useThemeContext();
+  const wallpaperRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -86,6 +87,15 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
       setTimeout(() => { setMessage(""); onClose(); }, 1000);
     }
     setSaving(false);
+  };
+
+  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setWallpaper(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const initials = (displayName || username || "A")[0].toUpperCase();
@@ -182,12 +192,13 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                   ))}
                 </div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Theme</label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {([
-                    { id: "default", color: "bg-violet-500", label: "Default" },
-                    { id: "ocean",   color: "bg-cyan-500",   label: "Ocean" },
-                    { id: "forest",  color: "bg-green-500",  label: "Forest" },
-                    { id: "rose",    color: "bg-rose-500",   label: "Rose" },
+                    { id: "default", color: "bg-violet-500",  label: "Default" },
+                    { id: "ocean",   color: "bg-cyan-500",    label: "Ocean" },
+                    { id: "forest",  color: "bg-green-500",   label: "Forest" },
+                    { id: "rose",    color: "bg-rose-500",    label: "Rose" },
+                    { id: "doodle",  color: "bg-purple-400",  label: "Doodle" },
                   ] as const).map((t) => (
                     <button key={t.id} onClick={() => setTheme(t.id)}
                       className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-[10px] font-medium transition-all border ${theme === t.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
@@ -196,6 +207,30 @@ const ProfileSettings = ({ open, onClose }: ProfileSettingsProps) => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Chat Wallpaper */}
+              <div className="mb-5">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Chat Wallpaper</label>
+                <div className="flex gap-2">
+                  <button onClick={() => wallpaperRef.current?.click()}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-xs text-muted-foreground hover:border-primary/40 transition-all">
+                    <Image className="h-3.5 w-3.5" />
+                    {wallpaper ? "Change wallpaper" : "Set wallpaper"}
+                  </button>
+                  {wallpaper && (
+                    <button onClick={() => setWallpaper(null)}
+                      className="px-3 py-2 rounded-xl border border-destructive/40 text-xs text-destructive hover:bg-destructive/10 transition-all">
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {wallpaper && (
+                  <div className="mt-2 h-16 rounded-xl overflow-hidden border border-border">
+                    <img src={wallpaper} className="w-full h-full object-cover" alt="Wallpaper preview" />
+                  </div>
+                )}
+                <input ref={wallpaperRef} type="file" className="hidden" accept="image/*" onChange={handleWallpaperUpload} />
               </div>
 
               {message && (

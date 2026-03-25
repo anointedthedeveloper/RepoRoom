@@ -214,6 +214,45 @@
     --sidebar-accent: 340 18% 87%;
     --sidebar-border: 340 18% 85%;
   }
+  /* ── THEME: DOODLE (dark) ── */
+  .dark.theme-doodle, .theme-doodle {
+    --background: 270 20% 8%;
+    --foreground: 280 15% 92%;
+    --card: 270 18% 12%;
+    --card-foreground: 280 15% 92%;
+    --popover: 270 18% 12%;
+    --popover-foreground: 280 15% 92%;
+    --primary: 280 80% 65%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 270 15% 16%;
+    --muted-foreground: 270 12% 52%;
+    --border: 270 15% 18%;
+    --input: 270 15% 18%;
+    --ring: 280 80% 65%;
+    --received: 270 15% 18%;
+    --sidebar-background: 270 25% 5%;
+    --sidebar-foreground: 280 15% 88%;
+    --sidebar-accent: 270 15% 13%;
+    --sidebar-border: 270 15% 10%;
+  }
+
+  /* ── THEME: DOODLE (light) ── */
+  .light.theme-doodle {
+    --background: 270 30% 97%;
+    --foreground: 270 35% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 270 35% 10%;
+    --primary: 280 70% 55%;
+    --muted: 270 20% 93%;
+    --muted-foreground: 270 15% 47%;
+    --border: 270 20% 86%;
+    --input: 270 20% 86%;
+    --received: 270 20% 91%;
+    --sidebar-background: 270 25% 93%;
+    --sidebar-foreground: 270 35% 12%;
+    --sidebar-accent: 270 18% 87%;
+    --sidebar-border: 270 18% 85%;
+  }
 }
 
 @layer base {
@@ -244,4 +283,32 @@
   .bg-online { background: hsl(var(--online)); }
   .bg-offline { background: hsl(var(--offline)); }
   .text-online { color: hsl(var(--online)); }
+
+  /* Doodle theme pattern overlay */
+  .theme-doodle .chat-messages-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23a855f7' stroke-width='1.5'%3E%3Ccircle cx='15' cy='15' r='6'/%3E%3Crect x='35' y='8' width='12' height='12' rx='2'/%3E%3Cpath d='M5 40 L15 30 L25 40'/%3E%3Ccircle cx='45' cy='40' r='8'/%3E%3Cpath d='M8 55 Q15 48 22 55'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 60px;
+  }
+
+  /* Chat wallpaper */
+  .chat-wallpaper {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+  }
+  .chat-wallpaper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: hsl(var(--background) / 0.7);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .chat-wallpaper > * { position: relative; z-index: 1; }
 }
