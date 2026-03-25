@@ -373,6 +373,7 @@ export function useWebRTC() {
   const [isMuted,       setIsMuted]       = useState(false);
   const [isVideoOff,    setIsVideoOff]    = useState(false);
   const [remoteVideoOff, setRemoteVideoOff] = useState(false);
+  const [facingMode,    setFacingMode]    = useState<"user" | "environment">("user");
 
   const toggleMute = useCallback(() => {
     localStreamRef.current?.getAudioTracks().forEach((t) => {
@@ -385,11 +386,70 @@ export function useWebRTC() {
     localStreamRef.current?.getVideoTracks().forEach((t) => {
       t.enabled = !t.enabled;
       setIsVideoOff(!t.enabled);
-      // Notify the remote peer so they can show our avatar
       const rid = remoteUserIdRef.current;
       if (rid) sendSignal({ type: "video-toggle", to: rid, data: { videoOff: !t.enabled } });
     });
   }, [sendSignal]);
+
+  // Upgrade audio call to video
+  const upgradeToVideo = useCallback(async () => {
+    if (callTypeRef.current === "video") return;
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      });
+      // Stop old audio-only stream
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = newStream;
+      setLocalStream(newStream);
+      callTypeRef.current = "video";
+      setCallType("video");
+      // Replace tracks on all peer connections
+      const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
+      for (const pc of allPCs) {
+        for (const track of newStream.getTracks()) {
+          const sender = pc.getSenders().find((s) => s.track?.kind === track.kind);
+          if (sender) {
+            await sender.replaceTrack(track).catch(() => {});
+          } else {
+            pc.addTrack(track, newStream);
+          }
+        }
+      }
+      // Notify remote
+      const rid = remoteUserIdRef.current;
+      if (rid) sendSignal({ type: "video-toggle", to: rid, data: { videoOff: false } });
+    } catch (err) {
+      console.error("[WebRTC] upgradeToVideo failed:", err);
+    }
+  }, [sendSignal]);
+
+  // Flip between front and back camera (mobile)
+  const flipCamera = useCallback(async () => {
+    const nextFacing = facingMode === "user" ? "environment" : "user";
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: nextFacing },
+      });
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) return;
+      // Replace in local stream
+      const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+      if (oldVideoTrack) {
+        localStreamRef.current?.removeTrack(oldVideoTrack);
+        oldVideoTrack.stop();
+      }
+      localStreamRef.current?.addTrack(newVideoTrack);
+      setLocalStream(new MediaStream(localStreamRef.current?.getTracks() || [newVideoTrack]));
+      // Replace on peer connections
+      await replaceVideoTrack(newVideoTrack);
+      setFacingMode(nextFacing);
+    } catch (err) {
+      console.error("[WebRTC] flipCamera failed:", err);
+    }
+  }, [facingMode, replaceVideoTrack]);
 
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
     const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
@@ -472,6 +532,8 @@ export function useWebRTC() {
             case "answer": {
               const pc = peerConnections.current.get(signal.from) || peerConnection.current;
               if (pc && pc.signalingState === "have-local-offer") {
+                // Stop ringtone immediately when callee answers
+                ringtoneRef.current.stop();
                 await pc.setRemoteDescription(new RTCSessionDescription(signal.data))
                   .catch((e) => console.error("[WebRTC] setRemoteDescription (answer) error:", e));
                 for (const c of iceCandidateQueue.current) {
@@ -527,8 +589,9 @@ export function useWebRTC() {
   return {
     callState, callType, remoteUserId, remoteUsername,
     localStream, remoteStream, callDuration, isScreenSharing,
-    isMuted, isVideoOff, remoteVideoOff,
+    isMuted, isVideoOff, remoteVideoOff, facingMode,
     startCall, startGroupCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, replaceVideoTrack, startScreenShare, stopScreenShare,
+    upgradeToVideo, flipCamera,
   };
 }

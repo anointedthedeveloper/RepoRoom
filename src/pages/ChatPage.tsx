@@ -30,9 +30,10 @@ const ChatPage = () => {
   } = useChat();
 
   const { callState, callType, remoteUserId, remoteUsername, localStream, remoteStream,
-    callDuration, isScreenSharing, isMuted, isVideoOff, remoteVideoOff,
+    callDuration, isScreenSharing, isMuted, isVideoOff, remoteVideoOff, facingMode,
     startCall, startGroupCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, startScreenShare, stopScreenShare,
+    upgradeToVideo, flipCamera,
   } = useWebRTC();
 
   // Resolve remote user's avatar from any chat room they're in
@@ -253,6 +254,9 @@ const ChatPage = () => {
             onReject={rejectCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
+            onUpgradeToVideo={upgradeToVideo}
+            onFlipCamera={flipCamera}
+            facingMode={facingMode}
             isMuted={isMuted}
             isVideoOff={isVideoOff}
             remoteVideoOff={remoteVideoOff}

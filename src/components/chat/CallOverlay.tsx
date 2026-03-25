@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Phone, PhoneOff, PhoneMissed, Video, VideoOff, Mic, MicOff, Monitor, MonitorOff } from "lucide-react";
+import { Phone, PhoneOff, PhoneMissed, Video, VideoOff, Mic, MicOff, Monitor, MonitorOff, FlipHorizontal2 } from "lucide-react";
 import { Sounds, unlockAudio } from "@/lib/sounds";
 
 interface CallOverlayProps {
@@ -17,11 +17,14 @@ interface CallOverlayProps {
   isMuted?: boolean;
   isVideoOff?: boolean;
   remoteVideoOff?: boolean;
+  facingMode?: "user" | "environment";
   onAccept: () => void;
   onEnd: () => void;
   onReject: () => void;
   onToggleMute: () => void;
   onToggleVideo: () => void;
+  onUpgradeToVideo?: () => void;
+  onFlipCamera?: () => void;
   onStartScreenShare?: () => void;
   onStopScreenShare?: () => void;
 }
@@ -38,8 +41,9 @@ function attachStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: Me
 const CallOverlay = ({
   callState, callType, remoteUsername, remoteAvatarUrl, localAvatarUrl, localUsername,
   localStream, remoteStream, callDuration, isScreenSharing,
-  isMuted = false, isVideoOff = false, remoteVideoOff = false,
-  onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onStartScreenShare, onStopScreenShare,
+  isMuted = false, isVideoOff = false, remoteVideoOff = false, facingMode = "user",
+  onAccept, onEnd, onReject, onToggleMute, onToggleVideo, onUpgradeToVideo, onFlipCamera,
+  onStartScreenShare, onStopScreenShare,
 }: CallOverlayProps) => {
   const mainVideoRef     = useRef<HTMLVideoElement>(null);
   const selfPipVideoRef  = useRef<HTMLVideoElement>(null);  // always in DOM
@@ -242,6 +246,13 @@ const CallOverlay = ({
                   className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? "bg-white/30 text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}>
                   {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
                 </button>
+                {onFlipCamera && (
+                  <button onClick={wa(onFlipCamera)}
+                    className="h-12 w-12 rounded-full flex items-center justify-center transition-colors bg-white/10 text-white/80 hover:bg-white/20"
+                    title={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}>
+                    <FlipHorizontal2 className="h-5 w-5" />
+                  </button>
+                )}
                 <button
                   onClick={wa(() => isScreenSharing ? onStopScreenShare?.() : onStartScreenShare?.())}
                   className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${isScreenSharing ? "bg-primary text-white" : "bg-white/10 text-white/80 hover:bg-white/20"}`}
@@ -250,6 +261,14 @@ const CallOverlay = ({
                   {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
                 </button>
               </>
+            )}
+            {/* Upgrade audio call to video */}
+            {!isVideo && onUpgradeToVideo && (
+              <button onClick={wa(onUpgradeToVideo)}
+                className="h-12 w-12 rounded-full flex items-center justify-center transition-colors bg-white/10 text-white/80 hover:bg-white/20"
+                title="Switch to video call">
+                <Video className="h-5 w-5" />
+              </button>
             )}
           </div>
         )}
