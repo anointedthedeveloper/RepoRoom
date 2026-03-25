@@ -392,6 +392,17 @@ export function useWebRTC() {
   }, [sendSignal]);
 
   // Upgrade audio call to video
+  const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
+    const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
+    for (const pc of allPCs) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) {
+        const track = newTrack ?? localStreamRef.current?.getVideoTracks()[0] ?? null;
+        if (track) await sender.replaceTrack(track).catch(() => {});
+      }
+    }
+  }, []);
+
   const upgradeToVideo = useCallback(async () => {
     if (callTypeRef.current === "video") return;
     try {
@@ -450,17 +461,6 @@ export function useWebRTC() {
       console.error("[WebRTC] flipCamera failed:", err);
     }
   }, [facingMode, replaceVideoTrack]);
-
-  const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack | null) => {
-    const allPCs = [peerConnection.current, ...Array.from(peerConnections.current.values())].filter(Boolean) as RTCPeerConnection[];
-    for (const pc of allPCs) {
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) {
-        const track = newTrack ?? localStreamRef.current?.getVideoTracks()[0] ?? null;
-        if (track) await sender.replaceTrack(track).catch(() => {});
-      }
-    }
-  }, []);
 
   const startScreenShare = useCallback(async () => {
     try {
