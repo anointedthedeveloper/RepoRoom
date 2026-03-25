@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Hash, Plus, Copy, LogIn, ChevronDown, ChevronRight, Megaphone, CheckSquare, Users, Settings } from "lucide-react";
+import { Hash, Plus, Copy, LogIn, ChevronDown, ChevronRight, Megaphone, CheckSquare, Users, Settings, MessageSquare, LayoutDashboard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import AvatarBubble from "@/components/chat/AvatarBubble";
 import type { Workspace, Channel, WorkspaceMember, Task } from "@/hooks/useWorkspace";
@@ -36,6 +37,7 @@ const WorkspaceSidebar = ({
   onCreateWorkspace, onJoinWorkspace, onCreateChannel, onSetDevStatus, onOpenTasks,
 }: Props) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showChannels, setShowChannels] = useState(true);
   const [showMembers, setShowMembers] = useState(true);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
@@ -54,6 +56,20 @@ const WorkspaceSidebar = ({
 
   return (
     <div className="h-full flex flex-col bg-sidebar border-r border-sidebar-border">
+      {/* Top nav — Home + Dashboard */}
+      <div className="px-3 py-2 border-b border-sidebar-border flex items-center gap-1">
+        <button onClick={() => navigate("/")} title="Back to Chats"
+          className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors text-xs">
+          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+          <span>Chats</span>
+        </button>
+        <button onClick={() => navigate("/dashboard")} title="Dashboard"
+          className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors text-xs">
+          <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+          <span>Dashboard</span>
+        </button>
+      </div>
+
       {/* Workspace list */}
       <div className="px-3 py-3 border-b border-sidebar-border">
         <div className="flex items-center gap-1 mb-2">
