@@ -1,34 +1,41 @@
 # ChatFlow
 
-A real-time messaging app built with React, TypeScript, and Supabase.
+> A full-featured real-time messaging app — DMs, group chats, voice & video calls, voice notes, file sharing, and more.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-chatflowv.vercel.app-6d28d9?style=flat-square&logo=vercel)](https://chatflowv.vercel.app)
+[![Built with React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ecf8e?style=flat-square&logo=supabase)](https://supabase.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+---
 
 ## Features
 
-- **Real-time messaging** — instant delivery via Supabase Realtime
-- **Direct messages & group chats** — create DMs or groups with multiple members
-- **Voice & video calls** — WebRTC peer-to-peer calls with ringtone
-- **Voice notes** — record and send audio messages inline
-- **File sharing** — images, videos, documents, PDFs
-- **Image lightbox** — view images fullscreen without leaving the app
-- **Reply to messages** — double-tap or hover to reply with quoted context
-- **Typing indicators** — see when the other person is typing
-- **Read receipts** — single/double tick for sent/read
-- **Push notifications** — browser notifications for background messages and calls
-- **User profiles** — avatar upload, display name, username
-- **Group management** — edit group name/icon, add members, view member list
-- **Call indicators** — missed/declined/ended call messages in chat
-- **Themes** — Default, Ocean, Forest, Rose — switchable in settings
-- **Dark & light mode**
-- **Responsive** — works on mobile and desktop with sidebar toggle
+| Category | Features |
+|---|---|
+| **Messaging** | Real-time delivery, reply with quoted context, edit & delete, emoji picker |
+| **Media** | Images, videos, documents, PDFs, voice notes, image lightbox |
+| **Calls** | WebRTC audio & video calls, screen sharing, self-preview PiP, ringtones |
+| **Groups** | Create groups, add members, admin roles, group name/icon editing |
+| **UX** | Typing indicators, read receipts, push notifications, split-view mode |
+| **Profiles** | Avatar upload, display name, username, online status |
+| **Themes** | Default, Ocean, Forest, Rose — dark & light mode |
+| **PWA** | Installable, app badge for unread count, wake lock during calls |
+
+---
 
 ## Tech Stack
 
 - **Frontend** — React 18, TypeScript, Vite
 - **Styling** — Tailwind CSS, Framer Motion
-- **Backend** — Supabase (Auth, Database, Realtime, Storage)
-- **Calls** — WebRTC with STUN servers
+- **Backend** — Supabase (Auth, PostgreSQL, Realtime, Storage)
+- **Calls** — WebRTC with STUN + TURN (Open Relay)
+- **Deployment** — Vercel
 
-## Setup
+---
+
+## Quick Start
 
 ### 1. Clone & install
 
@@ -40,16 +47,17 @@ npm install
 
 ### 2. Environment variables
 
-Create a `.env` file:
-
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```bash
+cp .env.example .env
+# Fill in your Supabase URL and publishable key
 ```
 
 ### 3. Supabase setup
 
-Run the following SQL in your Supabase SQL Editor:
+Run the SQL below in your **Supabase SQL Editor** (Dashboard → SQL Editor → New query):
+
+<details>
+<summary>Click to expand full SQL setup</summary>
 
 ```sql
 -- Tables
@@ -165,9 +173,11 @@ create policy "Attachments public read" on storage.objects for select using (buc
 create policy "Attachments update" on storage.objects for update using (bucket_id = 'chat-attachments' and auth.role() = 'authenticated');
 ```
 
+</details>
+
 ### 4. Auth settings
 
-In Supabase → Authentication → Providers → Email: **disable "Confirm email"**
+Supabase → Authentication → Providers → Email → **disable "Confirm email"**
 
 ### 5. Run
 
@@ -181,6 +191,36 @@ npm run dev
 npm run build
 ```
 
+---
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── chat/          # ChatPanel, MessageBubble, CallOverlay, Sidebar, etc.
+│   └── ui/            # shadcn/ui primitives
+├── context/           # AuthContext, ThemeContext
+├── hooks/             # useChat, useWebRTC, useTheme
+├── integrations/      # Supabase client & generated types
+├── lib/               # sounds.ts, utils.ts
+└── pages/             # ChatPage, LoginPage, Index
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+---
+
 ## Built by
 
-AnointedTheDeveloper
+[AnointedTheDeveloper](https://github.com/anointedthedeveloper) — Lagos, Nigeria 🇳🇬
