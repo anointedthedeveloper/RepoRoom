@@ -73,9 +73,17 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 -- Add pinned_message_id FK now that messages exists
-ALTER TABLE public.chat_rooms
-  ADD CONSTRAINT IF NOT EXISTS chat_rooms_pinned_message_id_fkey
-  FOREIGN KEY (pinned_message_id) REFERENCES public.messages(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'chat_rooms_pinned_message_id_fkey'
+      AND table_name = 'chat_rooms'
+  ) THEN
+    ALTER TABLE public.chat_rooms
+      ADD CONSTRAINT chat_rooms_pinned_message_id_fkey
+      FOREIGN KEY (pinned_message_id) REFERENCES public.messages(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.reactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
