@@ -675,7 +675,7 @@ const ChatPanel = ({ chat, messages, reactions = [], onSendMessage, onEditMessag
           <div className="flex items-center justify-center py-2">
             <p className="text-xs text-muted-foreground">Accept the request to reply</p>
           </div>
-        ) : chat.isPending && chat.isRequester && messages.filter(m => m.sender_id === user?.id).length >= 1 ? (
+        ) : chat.isPending && chat.isRequester && messages.filter(m => m.sender_id === user?.id && !(m as any)._tempId).length >= 1 ? (
           <div className="flex items-center justify-center py-2">
             <p className="text-xs text-muted-foreground">Waiting for reply...</p>
           </div>

@@ -6,19 +6,28 @@ import { getAudioContext } from "@/lib/sounds";
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
-  // Free TURN via Open Relay Project — works on most networks including mobile/NAT
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun3.l.google.com:19302" },
+  { urls: "stun:stun4.l.google.com:19302" },
+  { urls: "stun:global.stun.twilio.com:3478" },
+  // Metered TURN — works across different networks, NAT, mobile, firewalls
   {
-    urls: "turn:openrelay.metered.ca:80",
+    urls: "turn:a.relay.metered.ca:80",
     username: "openrelayproject",
     credential: "openrelayproject",
   },
   {
-    urls: "turn:openrelay.metered.ca:443",
+    urls: "turn:a.relay.metered.ca:80?transport=tcp",
     username: "openrelayproject",
     credential: "openrelayproject",
   },
   {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    urls: "turn:a.relay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turns:a.relay.metered.ca:443?transport=tcp",
     username: "openrelayproject",
     credential: "openrelayproject",
   },
@@ -252,13 +261,16 @@ export function useWebRTC() {
       } else if (pc.iceConnectionState === "failed") {
         console.warn("[WebRTC] ICE failed — attempting restart");
         pc.restartIce();
+        setTimeout(() => {
+          if (pc.iceConnectionState === "failed") cleanup("ended");
+        }, 8000);
       } else if (pc.iceConnectionState === "disconnected") {
-        // Give it 5s to recover before ending
+        // Give it 8s to recover before ending
         setTimeout(() => {
           if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
             cleanup("ended");
           }
-        }, 5000);
+        }, 8000);
       }
     };
 

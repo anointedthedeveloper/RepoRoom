@@ -304,11 +304,10 @@ export function useChat() {
       if (!user || !activeChatId || (!text.trim() && !fileUrl)) return;
 
       const activeRoom = chatRooms.find((r) => r.id === activeChatId);
-      if (activeRoom?.isPending) {
-        if (!activeRoom.isRequester) return;
-        const { count } = await supabase.from("messages").select("id", { count: "exact", head: true })
-          .eq("chat_room_id", activeChatId).eq("sender_id", user.id);
-        if ((count ?? 0) >= 1) return;
+      if (activeRoom?.isPending && !activeRoom.isRequester) return;
+      if (activeRoom?.isPending && activeRoom.isRequester) {
+        const sentCount = messages.filter((m) => m.sender_id === user.id && m.chat_room_id === activeChatId && !m._tempId).length;
+        if (sentCount >= 1) return;
       }
 
       const tempId = `temp-${Date.now()}-${Math.random()}`;
