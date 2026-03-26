@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Hash, Plus, Copy, LogIn, ChevronDown, ChevronRight, Megaphone, Users, MessageSquare, LayoutDashboard } from "lucide-react";
+import { Hash, Plus, Copy, LogIn, ChevronDown, ChevronRight, Megaphone, Users, MessageSquare, LayoutDashboard, CheckSquare, FolderKanban, Github, UserPlus, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,8 @@ interface Props {
   projects: WorkspaceProject[];
   linkedRepoCount: number;
   activeChannelId: string | null;
+  standaloneView: string;
+  showGithub: boolean;
   onSelectWorkspace: (ws: Workspace) => void;
   onSelectChannel: (ch: Channel) => void;
   onCreateWorkspace: () => void;
@@ -23,7 +25,8 @@ interface Props {
   onSetDevStatus: (status: string) => void;
   onOpenTasks: () => void;
   onOpenProjects: () => void;
-  onOpenGithub?: () => void;
+  onOpenGithub: () => void;
+  onOpenAddPeople: () => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -31,7 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
   in_call: "bg-purple-500", idle: "bg-gray-400", offline: "bg-gray-600",
 };
 
-const WorkspaceSidebar = ({ workspaces, activeWorkspace, channels, members, activeChannelId, onSelectWorkspace, onSelectChannel, onCreateWorkspace, onJoinWorkspace, onCreateChannel }: Props) => {
+const WorkspaceSidebar = ({ workspaces, activeWorkspace, channels, members, activeChannelId, standaloneView, showGithub, onSelectWorkspace, onSelectChannel, onCreateWorkspace, onJoinWorkspace, onCreateChannel, onOpenTasks, onOpenProjects, onOpenGithub, onOpenAddPeople }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showChannels, setShowChannels] = useState(true);
@@ -54,6 +57,9 @@ const WorkspaceSidebar = ({ workspaces, activeWorkspace, channels, members, acti
         </button>
         <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors text-xs flex-1">
           <LayoutDashboard className="h-3.5 w-3.5 shrink-0" /><span>Dashboard</span>
+        </button>
+        <button onClick={() => navigate("/settings")} className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors" title="Settings">
+          <Settings className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -147,13 +153,35 @@ const WorkspaceSidebar = ({ workspaces, activeWorkspace, channels, members, acti
             </div>
           </div>
 
-          {/* My status dot */}
-          <div className="px-4 py-2.5 border-t border-sidebar-border">
+          {/* Bottom nav */}
+          <div className="px-3 py-2.5 border-t border-sidebar-border space-y-0.5">
+            <button onClick={onOpenTasks}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
+                standaloneView === "tasks" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              }`}>
+              <CheckSquare className="h-3.5 w-3.5 shrink-0" /><span>Tasks</span>
+            </button>
+            <button onClick={onOpenProjects}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
+                standaloneView === "projects" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              }`}>
+              <FolderKanban className="h-3.5 w-3.5 shrink-0" /><span>Projects</span>
+            </button>
+            <button onClick={onOpenGithub}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
+                standaloneView === "github" || showGithub ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              }`}>
+              <Github className="h-3.5 w-3.5 shrink-0" /><span>GitHub</span>
+            </button>
+            <button onClick={onOpenAddPeople}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+              <UserPlus className="h-3.5 w-3.5 shrink-0" /><span>Add People</span>
+            </button>
             {(() => {
               const me = members.find(m => m.user_id === user?.id);
               const color = STATUS_COLORS[me?.dev_status || "online"] || STATUS_COLORS.online;
               return (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-2 py-1.5">
                   <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
                   <span className="text-xs text-muted-foreground capitalize">{(me?.dev_status || "online").replace("_", " ")}</span>
                 </div>
