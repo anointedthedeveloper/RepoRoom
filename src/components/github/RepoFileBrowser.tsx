@@ -167,12 +167,13 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     setConsoleLines((prev) => [...prev, { id: `${Date.now()}-${prev.length}`, kind, text }]);
   };
 
-  useEffect(() => {
+  const fetchRepoData = useCallback(async () => {
     setLoading(true);
-    Promise.all([
-      ghFetch<TreeResponse>(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`),
-      ghFetch<BranchResponse[]>(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=30`),
-    ]).then(([treeData, branchData]) => {
+    try {
+      const [treeData, branchData] = await Promise.all([
+        ghFetch<TreeResponse>(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`),
+        ghFetch<BranchResponse[]>(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=30`),
+      ]);
       setTree((treeData.tree || []).filter((node) => node.type === "blob" || node.type === "tree").map((node) => ({
         path: node.path,
         name: node.path.split("/").pop() || node.path,
@@ -181,8 +182,16 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
         url: node.url,
       })));
       setBranches(branchData.map((item) => item.name));
-    }).finally(() => setLoading(false));
+    } catch (err) {
+      pushConsole("stderr", "Failed to pull from source.");
+    } finally {
+      setLoading(false);
+    }
   }, [owner, repo, branch, ghFetch]);
+
+  useEffect(() => {
+    void fetchRepoData();
+  }, [fetchRepoData]);
 
   useEffect(() => {
     consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -579,19 +588,59 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
           {activeTab && (
             <div className="h-10 flex items-center px-6 text-[11px] text-muted-foreground gap-1 bg-background/30 border-b border-border/20">
               <div className="flex items-center gap-1 overflow-hidden">
-                <span className="hover:text-primary transition-colors cursor-pointer">{owner}</span>
+                <span 
+                  onClick={() => { setActiveSidebarTab("explorer"); setShowSidebar(true); }}
+                  className="hover:text-primary transition-colors cursor-pointer"
+                >
+                  {owner}
+                </span>
                 <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />
-                <span className="hover:text-primary transition-colors cursor-pointer">{repo}</span>
+                <span 
+                  onClick={() => { setActiveSidebarTab("explorer"); setShowSidebar(true); }}
+                  className="hover:text-primary transition-colors cursor-pointer"
+                >
+                  {repo}
+                </span>
                 <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />
-                {activeTab.path.split("/").map((part, i, arr) => (
-                  <div key={`${part}-${i}`} className="flex items-center gap-1">
-                    <span className={cn("truncate", i === arr.length - 1 ? "text-foreground font-semibold" : "hover:text-primary transition-colors cursor-pointer")}>{part}</span>
-                    {i < arr.length - 1 && <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />}
-                  </div>
-                ))}
+                {activeTab.path.split("/").map((part, i, arr) => {
+                  const pathUpToNow = arr.slice(0, i + 1).join("/");
+                  const isLast = i === arr.length - 1;
+                  
+                  return (
+                    <div key={`${part}-${i}`} className="flex items-center gap-1">
+                      <span 
+                        onClick={() => {
+                          if (!isLast) {
+                            setExpanded(prev => {
+                              const next = new Set(prev);
+                              next.add(pathUpToNow);
+                              return next;
+                            });
+                            setActiveSidebarTab("explorer");
+                            setShowSidebar(true);
+                          }
+                        }}
+                        className={cn("truncate", isLast ? "text-foreground font-semibold" : "hover:text-primary transition-colors cursor-pointer")}
+                      >
+                        {part}
+                      </span>
+                      {!isLast && <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />}
+                    </div>
+                  );
+                })}
               </div>
               
               <div className="ml-auto flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    void fetchRepoData();
+                    pushConsole("info", "Pulling from source...");
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium border border-primary/20"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                  <span>Pull from Source</span>
+                </button>
                 <button 
                   onClick={runFile} 
                   className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all font-bold"
