@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface GithubRepo {
   id: number;
@@ -53,6 +54,29 @@ export function useGithub() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load PAT from DB on mount if not in localStorage
+  const loadFromDb = useCallback(async () => {
+    if (localStorage.getItem(GH_TOKEN_KEY)) return; // already have it
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("github_pat, github_username")
+      .eq("id", user.id)
+      .single();
+    if (data?.github_pat) {
+      localStorage.setItem(GH_TOKEN_KEY, data.github_pat);
+      setTokenState(data.github_pat);
+    }
+    if (data?.github_username) {
+      localStorage.setItem(GH_USER_KEY, data.github_username);
+      setGithubUser(data.github_username);
+    }
+  }, []);
+
+  // Call loadFromDb once on mount
+  useState(() => { loadFromDb(); });
+
   const ghFetch = useCallback(async (url: string, tok?: string) => {
     const t = tok || token;
     const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
@@ -71,6 +95,14 @@ export function useGithub() {
       localStorage.setItem(GH_USER_KEY, user.login);
       setTokenState(pat);
       setGithubUser(user.login);
+      // Persist to DB so it survives across devices/sessions
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await supabase.from("profiles").update({
+          github_pat: pat,
+          github_username: user.login,
+        }).eq("id", authUser.id);
+      }
       return true;
     } catch {
       setError("Invalid token or network error");
@@ -80,12 +112,20 @@ export function useGithub() {
     }
   }, [ghFetch]);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     localStorage.removeItem(GH_TOKEN_KEY);
     localStorage.removeItem(GH_USER_KEY);
     setTokenState(null);
     setGithubUser(null);
     setRepos([]);
+    // Clear from DB too
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").update({
+        github_pat: null,
+        github_username: null,
+      }).eq("id", user.id);
+    }
   }, []);
 
   const fetchRepos = useCallback(async () => {
