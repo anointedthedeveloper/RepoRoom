@@ -37,7 +37,7 @@
 
 ## Quick Start
 
-### 1. Clone & install
+.### 1. Clone & install
 
 ```bash
 git clone https://github.com/anointedthedeveloper/ChatFlow.git
