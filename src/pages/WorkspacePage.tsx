@@ -15,8 +15,15 @@ import GithubPanel from "@/components/github/GithubPanel";
 import RepoFileBrowser from "@/components/github/RepoFileBrowser";
 import MessageBubble from "@/components/chat/MessageBubble";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import { 
+  Files, Search, GitBranch, Settings, User, Bug, PlayCircle, Code2, Monitor, 
+  Info, Check, AlertCircle, FileCode, FileJson, FilePlus, FolderPlus, RefreshCw, 
+  MoreVertical, Layout, PanelLeft, PanelBottom, Sidebar, Home, BarChart2, Briefcase, 
+  ListTodo, Github as GithubIcon, MessageSquare as ChatIcon, Bell, HelpCircle
+} from "lucide-react";
 import type { Channel, Workspace } from "@/hooks/useWorkspace";
 import type { GithubRepo } from "@/hooks/useGithub";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -363,7 +370,85 @@ const WorkspacePage = () => {
   }, []);
 
   return (
-    <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
+    <div className="h-screen flex overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--background)))]">
+      {/* App Activity Bar (Global) */}
+      <div className="hidden lg:flex w-[68px] flex-col items-center py-6 gap-6 shrink-0 border-r border-border/40 bg-card/40 backdrop-blur-md relative z-50">
+        <div className="h-11 w-11 rounded-2xl bg-primary flex items-center justify-center mb-2 shadow-lg shadow-primary/20 cursor-pointer group transition-all hover:scale-105 active:scale-95" onClick={() => navigate("/")}>
+          <Home className="h-5 w-5 text-white" />
+        </div>
+        
+        <div className="flex flex-col gap-2 w-full px-2">
+          <button 
+            onClick={() => navigate("/workspace")} 
+            className={cn(
+              "p-3 rounded-2xl transition-all duration-200 group relative",
+              standaloneView === "chat" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+            title="Chat & Workspace"
+          >
+            <ChatIcon className="h-5 w-5 mx-auto" />
+            {standaloneView === "chat" && <motion.div layoutId="active-pill" className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />}
+          </button>
+          
+          <button 
+            onClick={() => navigate("/workspace/tasks")} 
+            className={cn(
+              "p-3 rounded-2xl transition-all duration-200 group relative",
+              standaloneView === "tasks" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+            title="Tasks"
+          >
+            <ListTodo className="h-5 w-5 mx-auto" />
+            {standaloneView === "tasks" && <motion.div layoutId="active-pill" className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />}
+          </button>
+
+          <button 
+            onClick={() => navigate("/workspace/projects")} 
+            className={cn(
+              "p-3 rounded-2xl transition-all duration-200 group relative",
+              standaloneView === "projects" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+            title="Projects"
+          >
+            <Briefcase className="h-5 w-5 mx-auto" />
+            {standaloneView === "projects" && <motion.div layoutId="active-pill" className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />}
+          </button>
+
+          <button 
+            onClick={() => navigate("/workspace/github")} 
+            className={cn(
+              "p-3 rounded-2xl transition-all duration-200 group relative",
+              standaloneView === "github" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+            title="GitHub Integration"
+          >
+            <GithubIcon className="h-5 w-5 mx-auto" />
+            {standaloneView === "github" && <motion.div layoutId="active-pill" className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />}
+          </button>
+
+          <button 
+            onClick={() => navigate("/dashboard")} 
+            className="p-3 rounded-2xl text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-200"
+            title="Dashboard"
+          >
+            <BarChart2 className="h-5 w-5 mx-auto" />
+          </button>
+        </div>
+
+        <div className="mt-auto flex flex-col gap-4 mb-2 w-full px-2">
+          <button className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-2xl transition-all relative">
+            <Bell className="h-5 w-5 mx-auto" />
+            <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-rose-500 border-2 border-card" />
+          </button>
+          <button onClick={() => navigate("/settings")} className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-2xl transition-all">
+            <Settings className="h-5 w-5 mx-auto" />
+          </button>
+          <button className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-2xl transition-all">
+            <User className="h-5 w-5 mx-auto" />
+          </button>
+        </div>
+      </div>
+
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
