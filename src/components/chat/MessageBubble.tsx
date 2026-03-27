@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ban, Check, CheckCheck, FileText, Download, Play, Pause, Phone, Video, Reply, X, Pencil, Trash2, Copy, Pin, SmilePlus, Forward, Loader2, AlertCircle, RotateCcw, Github } from "lucide-react";
+import { Ban, Check, CheckCheck, FileText, Download, Play, Pause, Phone, Video, Reply, X, Pencil, Trash2, Copy, Pin, SmilePlus, Forward, Loader2, AlertCircle, RotateCcw, Github, ExternalLink } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import GithubRepoCard from "@/components/github/GithubRepoCard";
 import { useGithub } from "@/hooks/useGithub";
+import { useLinkPreview, extractUrl } from "@/hooks/useLinkPreview";
 
 interface Reaction { emoji: string; count: number; mine: boolean; }
 
@@ -162,6 +163,11 @@ const MessageBubble = ({ message, isMine, canDelete = isMine, selected, onSelect
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapCount = useRef(0);
   const { parseGithubUrl } = useGithub();
+  const hasUrl = !!(message.text && extractUrl(message.text));
+  const isGithubUrl = !!(message.text && message.text.match(/https?:\/\/github\.com\/[^\s]+/));
+  const { preview, loading: previewLoading } = useLinkPreview(
+    hasUrl && !isGithubUrl && !message.fileUrl && !isCall && !isDeleted ? message.text : ""
+  );
 
   const isImage   = message.fileType?.startsWith("image/");
   const isVideo   = message.fileType?.startsWith("video/");
