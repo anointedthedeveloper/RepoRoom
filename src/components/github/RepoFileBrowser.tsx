@@ -891,24 +891,26 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                                 language={EXT_LANG[activeTab.name.split(".").pop() || ""] || "text"}
                               >
                                 {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                  <pre className={cn(className, "flex-1 m-0 p-6 font-mono text-[14px] outline-none min-w-full leading-relaxed")} style={{ ...style, backgroundColor: "transparent" }}>
+                                  <div className="relative flex-1 min-w-max">
+                                    <pre className={cn(className, "m-0 p-6 font-mono text-[14px] outline-none min-w-full leading-relaxed")} style={{ ...style, backgroundColor: "transparent" }}>
+                                      {tokens.map((line, i) => (
+                                        <div key={i} {...getLineProps({ line, key: i })} className="flex group/line">
+                                          <span className="w-12 text-right pr-6 select-none opacity-20 group-hover/line:opacity-50 text-[11px] shrink-0 font-medium transition-opacity">{i + 1}</span>
+                                          <span className="flex-1">
+                                            {line.map((token, key) => (
+                                              <span key={key} {...getTokenProps({ token, key })} />
+                                            ))}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </pre>
                                     <textarea
                                       value={activeTab.editContent}
                                       onChange={(e) => updateActiveTabContent(e.target.value)}
-                                      className="absolute inset-0 w-full h-full p-6 pl-[4.5rem] bg-transparent text-transparent caret-primary resize-none outline-none font-mono text-[14px] leading-[inherit] z-10"
+                                      className="absolute inset-0 w-full h-full p-6 pl-[4.5rem] bg-transparent text-transparent caret-primary resize-none outline-none font-mono text-[14px] leading-relaxed z-10 overflow-auto"
                                       spellCheck={false}
                                     />
-                                    {tokens.map((line, i) => (
-                                      <div key={i} {...getLineProps({ line, key: i })} className="flex group/line">
-                                        <span className="w-12 text-right pr-6 select-none opacity-20 group-hover/line:opacity-50 text-[11px] shrink-0 font-medium transition-opacity">{i + 1}</span>
-                                        <span className="flex-1">
-                                          {line.map((token, key) => (
-                                            <span key={key} {...getTokenProps({ token, key })} />
-                                          ))}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </pre>
+                                  </div>
                                 )}
                               </Highlight>
                             </div>
