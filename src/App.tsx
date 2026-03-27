@@ -12,6 +12,7 @@ import WorkspacePage from "./pages/WorkspacePage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import AuthRoutePage from "./pages/AuthRoutePage.tsx";
 import ChatRoutePage from "./pages/ChatRoutePage.tsx";
+import EditorPage from "./pages/EditorPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,8 @@ const App = () => (
               <Route path="/workspace/tasks" element={<WorkspacePage />} />
               <Route path="/workspace/projects" element={<WorkspacePage />} />
               <Route path="/workspace/github" element={<WorkspacePage />} />
+              <Route path="/editor/:owner/:repo/:branch" element={<EditorPage />} />
+              <Route path="/editor/:owner/:repo" element={<EditorPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

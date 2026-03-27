@@ -12,6 +12,7 @@ import { useThemeContext } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface TreeNode {
   path: string;
@@ -57,6 +58,7 @@ interface Props {
   projects?: WorkspaceProject[];
   onImportToProject?: (projectId: string, repoFullName: string, branchName: string, filePath: string, fileSha?: string | null) => Promise<void> | void;
   onClose: () => void;
+  fullMode?: boolean;
 }
 
 const EXT_LANG: Record<string, Language> = {
@@ -122,9 +124,10 @@ const previewDoc = (path: string, content: string) => {
   return "";
 };
 
-const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportToProject, onClose }: Props) => {
+const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportToProject, onClose, fullMode = false }: Props) => {
   const { token, commitFile } = useGithub();
   const { mode } = useThemeContext();
+  const navigate = useNavigate();
   
   // Workspace State
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -139,7 +142,7 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
   const [activeSidebarTab, setActiveSidebarTab] = useState<"explorer" | "search" | "git">("explorer");
   const [showTerminal, setShowTerminal] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(fullMode);
   const [viewMode, setViewMode] = useState<"code" | "preview" | "split">("code");
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
@@ -374,20 +377,20 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
             }
           }}
           className={cn(
-            "w-full flex items-center gap-2 py-1 px-2 text-left hover:bg-muted/50 transition-colors group",
-            isActive ? "bg-primary/10 text-primary border-r-2 border-primary" : "text-foreground/70"
+            "w-full flex items-center gap-2 py-1 px-3 text-left hover:bg-muted/40 transition-all rounded-lg group mb-0.5",
+            isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground/70"
           )}
           style={{ paddingLeft: `${depth * 12 + 16}px` }}
         >
           {node.type === "tree" ? (
             <>
-              {isOpen ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-              {isOpen ? <FolderOpen className="h-4 w-4 text-blue-400 shrink-0" /> : <Folder className="h-4 w-4 text-blue-400 shrink-0" />}
+              {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />}
+              {isOpen ? <FolderOpen className="h-4 w-4 text-primary/80 shrink-0" /> : <Folder className="h-4 w-4 text-primary/80 shrink-0" />}
             </>
           ) : (
             <>
-              <span className="w-4" />
-              {getFileIcon(node.name)}
+              <span className="w-3.5" />
+              <div className="shrink-0">{getFileIcon(node.name)}</div>
             </>
           )}
           <span className="truncate text-[13px]">{node.name}</span>
@@ -398,38 +401,49 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
   });
 
   const editorTheme = mode === "light" ? themes.github : themes.nightOwl;
-  const isDark = mode === "dark";
 
   return (
     <div className={cn(
-      "flex flex-col overflow-hidden bg-[#1e1e1e] text-[#d4d4d4] font-sans selection:bg-primary/30",
-      fullscreen ? "fixed inset-0 z-50" : "h-full w-[1100px] border-l border-border"
+      "flex flex-col overflow-hidden bg-background/95 backdrop-blur-xl text-foreground font-sans selection:bg-primary/30 border border-border/50 transition-all duration-300 shadow-2xl",
+      fullscreen ? "fixed inset-0 z-50 rounded-none" : "h-full w-full rounded-[28px]"
     )}>
-      {/* Main Workspace */}
+      {/* Workspace */}
       <div className="flex-1 flex overflow-hidden">
         {/* Activity Bar */}
-        <div className="w-12 bg-[#333333] flex flex-col items-center py-4 gap-4 shrink-0 border-r border-white/5">
+        <div className="w-14 bg-muted/40 backdrop-blur-md flex flex-col items-center py-6 gap-5 shrink-0 border-r border-border/40">
+          <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center mb-2 shadow-lg shadow-primary/20">
+            <Code2 className="h-5 w-5 text-white" />
+          </div>
           <button 
             onClick={() => { setActiveSidebarTab("explorer"); setShowSidebar(true); }}
-            className={cn("p-2 transition-colors", activeSidebarTab === "explorer" && showSidebar ? "text-white" : "text-white/40 hover:text-white/70")}
+            className={cn("p-2.5 rounded-xl transition-all duration-200", activeSidebarTab === "explorer" && showSidebar ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <Files className="h-6 w-6" />
+            <Files className="h-5 w-5" />
           </button>
           <button 
             onClick={() => { setActiveSidebarTab("search"); setShowSidebar(true); }}
-            className={cn("p-2 transition-colors", activeSidebarTab === "search" && showSidebar ? "text-white" : "text-white/40 hover:text-white/70")}
+            className={cn("p-2.5 rounded-xl transition-all duration-200", activeSidebarTab === "search" && showSidebar ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <Search className="h-6 w-6" />
+            <Search className="h-5 w-5" />
           </button>
           <button 
             onClick={() => { setActiveSidebarTab("git"); setShowSidebar(true); }}
-            className={cn("p-2 transition-colors", activeSidebarTab === "git" && showSidebar ? "text-white" : "text-white/40 hover:text-white/70")}
+            className={cn("p-2.5 rounded-xl transition-all duration-200", activeSidebarTab === "git" && showSidebar ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <GitBranch className="h-6 w-6" />
+            <GitBranch className="h-5 w-5" />
           </button>
-          <div className="mt-auto flex flex-col gap-4 mb-2">
-            <button className="p-2 text-white/40 hover:text-white/70"><User className="h-6 w-6" /></button>
-            <button className="p-2 text-white/40 hover:text-white/70"><Settings className="h-6 w-6" /></button>
+          <div className="mt-auto flex flex-col gap-4 mb-4">
+            {!fullscreen && (
+              <button 
+                onClick={() => navigate(`/editor/${owner}/${repo}/${branch}`)} 
+                title="Open in Full Editor"
+                className="p-2.5 text-primary hover:bg-primary/10 rounded-xl transition-all"
+              >
+                <Maximize2 className="h-5 w-5" />
+              </button>
+            )}
+            <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all"><User className="h-5 w-5" /></button>
+            <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all"><Settings className="h-5 w-5" /></button>
           </div>
         </div>
 
@@ -438,34 +452,36 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
           {showSidebar && (
             <motion.div 
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 260, opacity: 1 }}
+              animate={{ width: 280, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              className="bg-[#252526] border-r border-white/5 flex flex-col shrink-0"
+              className="bg-card/30 border-r border-border/40 flex flex-col shrink-0"
             >
-              <div className="h-9 flex items-center justify-between px-4 text-[11px] uppercase tracking-wider text-white/50 font-semibold">
+              <div className="h-14 flex items-center justify-between px-5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold">
                 <span>{activeSidebarTab}</span>
                 <div className="flex gap-1">
-                  <button className="p-1 hover:bg-white/10 rounded"><RefreshCw className="h-3 w-3" /></button>
-                  <button onClick={() => setShowSidebar(false)} className="p-1 hover:bg-white/10 rounded"><X className="h-3 w-3" /></button>
+                  <button className="p-1.5 hover:bg-muted rounded-lg transition-colors"><RefreshCw className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setShowSidebar(false)} className="p-1.5 hover:bg-muted rounded-lg transition-colors"><X className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto px-2">
                 {activeSidebarTab === "explorer" && (
                   <div className="py-2">
-                    <div className="px-4 py-1 flex items-center justify-between group">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-white/70">
-                        <ChevronDown className="h-4 w-4" />
+                    <div className="px-3 py-2 flex items-center justify-between group rounded-xl hover:bg-muted/30 transition-colors mb-1">
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-foreground/80">
+                        <div className="h-5 w-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <ChevronDown className="h-3 w-3 text-primary" />
+                        </div>
                         <span>{repo.toUpperCase()}</span>
                       </div>
                       <div className="hidden group-hover:flex gap-1">
-                        <button className="p-1 hover:bg-white/10 rounded"><FilePlus className="h-3 w-3" /></button>
-                        <button className="p-1 hover:bg-white/10 rounded"><FolderPlus className="h-3 w-3" /></button>
+                        <button className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground"><FilePlus className="h-3.5 w-3.5" /></button>
+                        <button className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground"><FolderPlus className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
                     {loading ? (
-                      <div className="p-4 flex flex-col gap-2">
-                        {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-4 bg-white/5 animate-pulse rounded w-full" />)}
+                      <div className="p-3 flex flex-col gap-2">
+                        {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-5 bg-muted/40 animate-pulse rounded-lg w-full" />)}
                       </div>
                     ) : (
                       renderTree()
@@ -474,30 +490,39 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                 )}
 
                 {activeSidebarTab === "git" && (
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-white/50 uppercase font-bold">Source Control</p>
-                      <div className="bg-white/5 border border-white/10 rounded p-2 text-xs">
+                  <div className="p-4 space-y-5">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <GitCommit className="h-4 w-4 text-primary" />
+                        <p className="text-[11px] text-foreground font-bold uppercase tracking-wider">Source Control</p>
+                      </div>
+                      <div className="bg-muted/40 border border-border/50 rounded-2xl p-4 space-y-4">
                         {tabs.filter(t => t.isModified).length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-white/70">{tabs.filter(t => t.isModified).length} files pending commit</p>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] text-muted-foreground">{tabs.filter(t => t.isModified).length} files changed</p>
+                              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                            </div>
                             <textarea 
                               value={commitMsg}
                               onChange={(e) => setCommitMsg(e.target.value)}
-                              placeholder="Commit message..."
-                              className="w-full bg-[#1e1e1e] border border-white/10 rounded p-2 text-white outline-none focus:border-primary/50 resize-none h-20"
+                              placeholder="What did you change?"
+                              className="w-full bg-background/50 border border-border/50 rounded-xl p-3 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary/30 resize-none h-24 transition-all"
                             />
                             <button 
                               onClick={handleCommit}
                               disabled={committing || !commitMsg.trim()}
-                              className="w-full bg-primary hover:bg-primary/90 text-white py-1.5 rounded flex items-center justify-center gap-2 disabled:opacity-50"
+                              className="w-full gradient-primary hover:opacity-90 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 font-medium text-sm shadow-lg shadow-primary/10"
                             >
                               {committing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <GitCommit className="h-4 w-4" />}
-                              Commit to {branch}
+                              Commit and Push
                             </button>
                           </div>
                         ) : (
-                          <p className="text-white/40 italic">No changes detected</p>
+                          <div className="py-8 text-center">
+                            <Check className="h-8 w-8 text-primary/20 mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground italic">No changes to commit</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -506,38 +531,43 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
               </div>
 
               {/* Branch Selector at bottom of sidebar */}
-              <div className="mt-auto border-t border-white/5 p-2">
-                <select 
-                  value={branch} 
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full bg-[#1e1e1e] text-[11px] text-white/70 border border-white/10 rounded px-2 py-1 outline-none"
-                >
-                  {branches.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
+              <div className="mt-auto p-4 border-t border-border/20">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest pl-1">Branch</p>
+                  <select 
+                    value={branch} 
+                    onChange={(e) => setBranch(e.target.value)}
+                    className="w-full bg-muted/50 text-xs text-foreground font-medium border border-border/50 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-primary/20 appearance-none"
+                  >
+                    {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Editor Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e]">
+        <div className="flex-1 flex flex-col min-w-0 bg-background/50">
           {/* Tab Bar */}
-          <div className="h-9 bg-[#252526] flex overflow-x-auto scrollbar-hide border-b border-white/5">
+          <div className="h-14 bg-muted/20 flex overflow-x-auto scrollbar-hide border-b border-border/40 items-center px-2 gap-1">
             {tabs.map((tab) => (
               <div
                 key={tab.path}
                 onClick={() => setActiveTabPath(tab.path)}
                 className={cn(
-                  "group flex items-center gap-2 px-3 py-1.5 border-r border-white/5 cursor-pointer min-w-[120px] max-w-[200px] transition-colors relative",
-                  activeTabPath === tab.path ? "bg-[#1e1e1e] text-white" : "bg-[#2d2d2d] text-white/40 hover:bg-[#2a2a2a] hover:text-white/70"
+                  "group flex items-center gap-2.5 px-4 py-2 rounded-xl cursor-pointer min-w-[140px] max-w-[220px] transition-all duration-200 relative",
+                  activeTabPath === tab.path ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 )}
               >
-                {activeTabPath === tab.path && <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />}
-                {getFileIcon(tab.name)}
-                <span className={cn("text-xs truncate flex-1", tab.isModified && "italic")}>{tab.name}{tab.isModified ? "*" : ""}</span>
+                {activeTabPath === tab.path && <div className="absolute -bottom-[1px] left-4 right-4 h-[2px] bg-primary rounded-full" />}
+                <div className="shrink-0">{getFileIcon(tab.name)}</div>
+                <span className={cn("text-xs font-medium truncate flex-1", tab.isModified && "text-primary italic")}>
+                  {tab.name}{tab.isModified ? "*" : ""}
+                </span>
                 <button 
                   onClick={(e) => closeTab(tab.path, e)}
-                  className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-1 rounded-lg hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -545,33 +575,42 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
             ))}
           </div>
 
-          {/* Breadcrumbs */}
+          {/* Breadcrumbs & Actions */}
           {activeTab && (
-            <div className="h-6 flex items-center px-4 text-[11px] text-white/40 gap-1 bg-[#1e1e1e]">
-              <span>{owner}</span>
-              <ChevronRight className="h-3 w-3" />
-              <span>{repo}</span>
-              <ChevronRight className="h-3 w-3" />
-              {activeTab.path.split("/").map((part, i, arr) => (
-                <div key={part} className="flex items-center gap-1">
-                  <span>{part}</span>
-                  {i < arr.length - 1 && <ChevronRight className="h-3 w-3" />}
-                </div>
-              ))}
-              <div className="ml-auto flex items-center gap-3">
-                <button onClick={runFile} className="hover:text-primary flex items-center gap-1 transition-colors">
-                  <Play className="h-3 w-3 fill-current" />
+            <div className="h-10 flex items-center px-6 text-[11px] text-muted-foreground gap-1 bg-background/30 border-b border-border/20">
+              <div className="flex items-center gap-1 overflow-hidden">
+                <span className="hover:text-primary transition-colors cursor-pointer">{owner}</span>
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />
+                <span className="hover:text-primary transition-colors cursor-pointer">{repo}</span>
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />
+                {activeTab.path.split("/").map((part, i, arr) => (
+                  <div key={`${part}-${i}`} className="flex items-center gap-1">
+                    <span className={cn("truncate", i === arr.length - 1 ? "text-foreground font-semibold" : "hover:text-primary transition-colors cursor-pointer")}>{part}</span>
+                    {i < arr.length - 1 && <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="ml-auto flex items-center gap-4">
+                <button 
+                  onClick={runFile} 
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all font-bold"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
                   <span>Run</span>
                 </button>
-                <div className="flex bg-white/5 rounded p-0.5 border border-white/10">
-                  <button onClick={() => setViewMode("code")} className={cn("p-1 rounded", viewMode === "code" ? "bg-white/10 text-white" : "hover:text-white")} title="Code"><Code2 className="h-3 w-3" /></button>
-                  <button onClick={() => setViewMode("split")} className={cn("p-1 rounded", viewMode === "split" ? "bg-white/10 text-white" : "hover:text-white")} title="Split View"><Layout className="h-3 w-3" /></button>
-                  <button onClick={() => setViewMode("preview")} className={cn("p-1 rounded", viewMode === "preview" ? "bg-white/10 text-white" : "hover:text-white")} title="Preview"><Eye className="h-3 w-3" /></button>
+                <div className="flex bg-muted/50 rounded-lg p-0.5 border border-border/40">
+                  <button onClick={() => setViewMode("code")} className={cn("p-1.5 rounded-md transition-all", viewMode === "code" ? "bg-background text-primary shadow-sm" : "hover:text-foreground")} title="Code"><Code2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode("split")} className={cn("p-1.5 rounded-md transition-all", viewMode === "split" ? "bg-background text-primary shadow-sm" : "hover:text-foreground")} title="Split View"><Layout className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode("preview")} className={cn("p-1.5 rounded-md transition-all", viewMode === "preview" ? "bg-background text-primary shadow-sm" : "hover:text-foreground")} title="Preview"><Eye className="h-3.5 w-3.5" /></button>
                 </div>
-                <button onClick={() => setFullscreen(!fullscreen)} className="hover:text-white transition-colors">
-                  {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                <div className="h-4 w-[1px] bg-border/40 mx-1" />
+                <button onClick={() => setFullscreen(!fullscreen)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-all">
+                  {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
-                <button onClick={onClose} className="hover:text-rose-400 transition-colors"><X className="h-3 w-3" /></button>
+                <button onClick={onClose} className="p-1.5 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-all">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
           )}
@@ -579,17 +618,19 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
           {/* Editor/Preview Surface */}
           <div className="flex-1 flex overflow-hidden relative">
             <PanelGroup direction="vertical">
-              <Panel defaultSize={70} minSize={20}>
+              <Panel defaultSize={75} minSize={20}>
                 <div className="h-full flex overflow-hidden">
                   {activeTab ? (
                     <>
                       {/* Code Editor */}
                       {(viewMode === "code" || viewMode === "split") && (
-                        <div className={cn("relative flex-1 flex overflow-hidden bg-[#1e1e1e]", viewMode === "split" && "border-r border-white/10")}>
+                        <div className={cn("relative flex-1 flex overflow-hidden bg-background/20", viewMode === "split" && "border-r border-border/40 shadow-inner")}>
                           {activeTab.loading ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#1e1e1e] z-10">
-                              <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
-                              <span className="text-xs text-white/40">Loading file...</span>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm z-10">
+                              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center relative">
+                                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground animate-pulse tracking-widest uppercase">Fetching Source</span>
                             </div>
                           ) : (
                             <div className="flex-1 overflow-auto flex">
@@ -599,16 +640,16 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                                 language={EXT_LANG[activeTab.name.split(".").pop() || ""] || "text"}
                               >
                                 {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                  <pre className={cn(className, "flex-1 m-0 p-4 font-mono text-[13px] outline-none min-w-full")} style={{ ...style, backgroundColor: "transparent" }}>
+                                  <pre className={cn(className, "flex-1 m-0 p-6 font-mono text-[14px] outline-none min-w-full leading-relaxed")} style={{ ...style, backgroundColor: "transparent" }}>
                                     <textarea
                                       value={activeTab.editContent}
                                       onChange={(e) => updateActiveTabContent(e.target.value)}
-                                      className="absolute inset-0 w-full h-full p-4 pl-[3.5rem] bg-transparent text-transparent caret-white resize-none outline-none font-mono text-[13px] leading-6 z-10"
+                                      className="absolute inset-0 w-full h-full p-6 pl-[4.5rem] bg-transparent text-transparent caret-primary resize-none outline-none font-mono text-[14px] leading-[inherit] z-10"
                                       spellCheck={false}
                                     />
                                     {tokens.map((line, i) => (
-                                      <div key={i} {...getLineProps({ line, key: i })} className="flex leading-6">
-                                        <span className="w-10 text-right pr-4 select-none opacity-20 text-[11px] shrink-0">{i + 1}</span>
+                                      <div key={i} {...getLineProps({ line, key: i })} className="flex group/line">
+                                        <span className="w-12 text-right pr-6 select-none opacity-20 group-hover/line:opacity-50 text-[11px] shrink-0 font-medium transition-opacity">{i + 1}</span>
                                         <span className="flex-1">
                                           {line.map((token, key) => (
                                             <span key={key} {...getTokenProps({ token, key })} />
@@ -626,9 +667,13 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
 
                       {/* Preview Panel */}
                       {(viewMode === "preview" || viewMode === "split") && (
-                        <div className="flex-1 overflow-auto bg-[#ffffff] text-[#333333]">
+                        <div className="flex-1 overflow-auto bg-white text-slate-900 shadow-2xl">
                           {/\.md$/i.test(activeTab.path) ? (
-                            <div className="max-w-4xl mx-auto px-10 py-10 prose prose-slate dark:prose-invert">
+                            <div className="max-w-4xl mx-auto px-12 py-12 prose prose-slate">
+                              <div className="mb-8 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1">Markdown Preview</p>
+                                <p className="text-xs font-mono text-slate-600 truncate">{activeTab.path}</p>
+                              </div>
                               {markdownBlocks(activeTab.editContent)}
                             </div>
                           ) : previewDoc(activeTab.path, activeTab.editContent) ? (
@@ -640,44 +685,34 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                               srcDoc={previewDoc(activeTab.path, activeTab.editContent)} 
                             />
                           ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-[#252526] text-white/40">
-                              <Info className="h-10 w-10 mb-4 opacity-20" />
-                              <p className="text-sm">No preview available for this file type.</p>
-                              <p className="text-[11px] mt-2">Only Markdown, HTML, CSS, JS, and JSON can be previewed in the sandbox.</p>
+                            <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-muted/10">
+                              <div className="h-16 w-16 rounded-3xl bg-muted/20 flex items-center justify-center mb-6">
+                                <Info className="h-8 w-8 text-muted-foreground/40" />
+                              </div>
+                              <p className="text-sm font-semibold text-foreground">No preview available</p>
+                              <p className="text-xs text-muted-foreground mt-2 max-w-[240px]">This file type can be edited but doesn't support live rendering in the sandbox.</p>
                             </div>
                           )}
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-4">
-                      <div className="relative">
-                        <Code2 className="h-20 w-20 text-white/5" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <svg className="h-12 w-12 text-white/10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-6">
+                      <div className="relative group">
+                        <div className="absolute -inset-8 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+                        <div className="h-28 w-28 rounded-[38px] border-2 border-primary/20 bg-background/50 flex items-center justify-center shadow-2xl relative z-10 transition-transform duration-500 group-hover:scale-110">
+                          <Code2 className="h-12 w-12 text-primary" />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 z-20">
+                          <Check className="h-5 w-5 text-white" />
                         </div>
                       </div>
-                      <div className="max-w-xs space-y-1">
-                        <p className="text-sm font-medium text-white/80">Welcome to ChatFlow IDE</p>
-                        <p className="text-[11px] text-white/40">Select a file from the explorer to start editing. You can run code, preview markdown, and commit changes directly.</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-white/30 pt-4">
-                        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400/50" />
-                          <span>Syntax Highlighting</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/50" />
-                          <span>Direct Commits</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400/50" />
-                          <span>Sandbox Preview</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400/50" />
-                          <span>Terminal Console</span>
-                        </div>
+                      <div className="max-w-md space-y-2 relative z-10">
+                        <h3 className="text-xl font-bold text-foreground tracking-tight">ChatFlow Cloud Editor</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed px-10">
+                          Open a file from the repository to start building. 
+                          Your changes can be committed and pushed directly back to GitHub.
+                        </p>
                       </div>
                     </div>
                   )}
@@ -686,40 +721,41 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
               
               {showTerminal && (
                 <>
-                  <PanelResizeHandle className="h-1 bg-white/5 hover:bg-primary/50 transition-colors cursor-row-resize" />
-                  <Panel defaultSize={30} minSize={10}>
-                    <div className="h-full bg-[#1e1e1e] flex flex-col border-t border-white/5">
-                      <div className="h-9 flex items-center px-4 gap-4 border-b border-white/5">
-                        <button className="text-[11px] font-bold uppercase tracking-wider text-white border-b-2 border-primary py-2">Terminal</button>
-                        <button className="text-[11px] font-bold uppercase tracking-wider text-white/40 hover:text-white/60 py-2">Debug Console</button>
-                        <button className="text-[11px] font-bold uppercase tracking-wider text-white/40 hover:text-white/60 py-2">Output</button>
+                  <PanelResizeHandle className="h-[2px] bg-border/40 hover:bg-primary transition-colors cursor-row-resize" />
+                  <Panel defaultSize={25} minSize={10}>
+                    <div className="h-full bg-background/50 backdrop-blur-md flex flex-col border-t border-border/40">
+                      <div className="h-12 flex items-center px-6 gap-6 border-b border-border/20">
+                        <button className="text-[10px] font-black uppercase tracking-[0.2em] text-primary border-b-2 border-primary py-4">Terminal</button>
+                        <button className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground py-4 transition-colors">Debug</button>
                         <div className="ml-auto flex items-center gap-2">
-                          <button onClick={() => setConsoleLines([])} className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white/70" title="Clear Console"><RefreshCw className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => setShowTerminal(false)} className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white/70"><X className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setConsoleLines([])} className="p-2 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-all" title="Clear Console"><RefreshCw className="h-4 w-4" /></button>
+                          <button onClick={() => setShowTerminal(false)} className="p-2 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-all"><X className="h-4 w-4" /></button>
                         </div>
                       </div>
-                      <div className="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs space-y-1">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 font-mono text-[12px] space-y-2">
                         {consoleLines.map((line) => (
                           <div key={line.id} className={cn(
-                            "flex gap-2",
-                            line.kind === "stderr" ? "text-rose-400" : 
-                            line.kind === "stdout" ? "text-emerald-400" : 
-                            line.kind === "input" ? "text-sky-400" : "text-white/60"
+                            "flex gap-3 px-3 py-1.5 rounded-lg",
+                            line.kind === "stderr" ? "bg-rose-500/5 text-rose-400" : 
+                            line.kind === "stdout" ? "bg-emerald-500/5 text-emerald-400" : 
+                            line.kind === "input" ? "bg-sky-500/5 text-sky-400 font-bold" : "text-muted-foreground"
                           )}>
-                            {line.kind === "input" && <span className="opacity-50">&gt;</span>}
+                            {line.kind === "input" && <span className="opacity-40 tracking-tighter">{">>>"}</span>}
                             <span>{line.text}</span>
                           </div>
                         ))}
                         <div ref={consoleEndRef} />
                       </div>
-                      <div className="p-2 px-4 border-t border-white/5 flex items-center gap-2">
-                        <span className="text-sky-400 font-mono text-xs">$</span>
+                      <div className="p-4 px-6 border-t border-border/20 bg-muted/10 flex items-center gap-3">
+                        <div className="h-6 w-6 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                          <span className="text-sky-500 font-bold text-xs">$</span>
+                        </div>
                         <input 
                           value={consoleInput} 
                           onChange={(e) => setConsoleInput(e.target.value)} 
                           onKeyDown={(e) => e.key === "Enter" && runConsoleCommand()} 
-                          placeholder="Type command (help, run, preview, clear)..."
-                          className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white/80"
+                          placeholder="Type command... (help, run, preview, clear)"
+                          className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                         />
                       </div>
                     </div>
@@ -730,41 +766,40 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
           </div>
 
           {/* Status Bar */}
-          <div className="h-6 bg-[#007acc] text-white flex items-center justify-between px-3 text-[11px] shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer">
-                <GitBranch className="h-3 w-3" />
+          <div className="h-7 bg-primary text-white flex items-center justify-between px-4 text-[10px] shrink-0 font-bold tracking-wider">
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors">
+                <GitBranch className="h-3.5 w-3.5" />
                 <span>{branch}</span>
-                <Check className="h-3 w-3" />
+                <Check className="h-3.5 w-3.5" />
               </div>
-              <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer">
-                <RefreshCw className="h-3 w-3" />
-              </div>
-              <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer">
-                <AlertCircle className="h-3 w-3" />
-                <span>0</span>
-                <Bug className="h-3 w-3" />
-                <span>0</span>
+              <div className="flex items-center gap-3 hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors">
+                <div className="flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>0</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Bug className="h-3.5 w-3.5" />
+                  <span>0</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5">
               {activeTab && (
-                <>
-                  <span className="hover:bg-white/10 px-1 cursor-pointer">Spaces: 2</span>
-                  <span className="hover:bg-white/10 px-1 cursor-pointer">UTF-8</span>
-                  <span className="hover:bg-white/10 px-1 cursor-pointer capitalize">{EXT_LANG[activeTab.name.split(".").pop() || ""] || "Plain Text"}</span>
-                  <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer">
-                    <Monitor className="h-3 w-3" />
+                <div className="hidden sm:flex items-center gap-4">
+                  <span className="hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors uppercase">{EXT_LANG[activeTab.name.split(".").pop() || ""] || "Plain Text"}</span>
+                  <div className="flex items-center gap-2 hover:bg-white/10 px-2 py-0.5 rounded-lg cursor-pointer transition-colors">
+                    <Monitor className="h-3.5 w-3.5" />
                     <span>Go Live</span>
                   </div>
-                  <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer">
-                    <Check className="h-3 w-3" />
-                    <span>Prettier</span>
-                  </div>
-                </>
+                </div>
               )}
-              <div className="flex items-center gap-1 hover:bg-white/10 px-1 cursor-pointer" onClick={() => setShowTerminal(!showTerminal)}>
-                <PanelBottom className="h-3 w-3" />
+              <div 
+                className={cn("flex items-center gap-2 px-2 py-0.5 rounded-lg cursor-pointer transition-colors", showTerminal ? "bg-white/20" : "hover:bg-white/10")} 
+                onClick={() => setShowTerminal(!showTerminal)}
+              >
+                <PanelBottom className="h-3.5 w-3.5" />
+                <span>Layout</span>
               </div>
             </div>
           </div>
