@@ -5,7 +5,7 @@ import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import GithubRepoCard from "@/components/github/GithubRepoCard";
 import { useGithub } from "@/hooks/useGithub";
-import { useLinkPreview, extractUrl } from "@/hooks/useLinkPreview";
+import LinkPreviewCard, { extractUrl } from "@/components/chat/LinkPreviewCard";
 
 interface Reaction { emoji: string; count: number; mine: boolean; }
 
@@ -163,11 +163,12 @@ const MessageBubble = ({ message, isMine, canDelete = isMine, selected, onSelect
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapCount = useRef(0);
   const { parseGithubUrl } = useGithub();
-  const hasUrl = !!(message.text && extractUrl(message.text));
-  const isGithubUrl = !!(message.text && message.text.match(/https?:\/\/github\.com\/[^\s]+/));
-  const { preview, loading: previewLoading } = useLinkPreview(
-    hasUrl && !isGithubUrl && !message.fileUrl && !isCall && !isDeleted ? message.text : ""
-  );
+  const linkPreviewUrl = (!message.fileUrl && !isCall && !isDeleted && message.text)
+    ? (() => {
+        const u = extractUrl(message.text);
+        return u && !u.match(/github\.com/) ? u : null;
+      })()
+    : null;
 
   const isImage   = message.fileType?.startsWith("image/");
   const isVideo   = message.fileType?.startsWith("video/");
