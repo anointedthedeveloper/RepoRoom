@@ -3,46 +3,103 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RepoRoom | Developer Platform for Messaging, Projects, GitHub, and Team Collaboration</title>
-    <meta
-      name="description"
-      content="RepoRoom is a developer platform for real-time messaging, programming collaboration, GitHub-linked projects, workspace communication, file import workflows, and developer team coordination."
-    />
-    <meta
-      name="keywords"
-      content="RepoRoom, developer platform, programming platform, platform for developers, developer collaboration platform, developer messaging platform, programming collaboration, GitHub workspace, software team communication, real-time developer chat, project platform for developers"
-    />
-    <meta name="author" content="Anointed the Developer" />
-    <meta name="creator" content="Anointed the Developer" />
-    <meta name="publisher" content="Anointed the Developer" />
+
+    <!-- ── Inline script: restore theme-color before React hydrates ── -->
+    <script>
+      (function () {
+        var saved = localStorage.getItem("cf-theme-color");
+        var meta = document.querySelector("meta[name='theme-color']");
+        if (saved && meta) meta.setAttribute("content", saved);
+      })();
+    </script>
+
+    <title>RepoRoom — Developer Workspace Messaging, GitHub Projects & Team Chat</title>
+
+    <!-- Primary SEO -->
+    <meta name="description" content="RepoRoom is the developer workspace platform for real-time team messaging, GitHub-linked projects, voice & video calls, and collaborative coding — all in one place." />
+    <meta name="keywords" content="RepoRoom, developer chat, developer messaging platform, GitHub workspace, team collaboration tool, real-time developer chat, programming collaboration, software team communication, developer platform, project management for developers, code collaboration" />
+    <meta name="author" content="Anobyte" />
+    <meta name="creator" content="Anobyte" />
+    <meta name="publisher" content="Anobyte" />
     <meta name="application-name" content="RepoRoom" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
     <link rel="canonical" href="https://www.reporoom.site/" />
 
-    <meta property="og:title" content="RepoRoom | Developer Platform for Messaging, Projects, and GitHub Workflows" />
-    <meta
-      property="og:description"
-      content="A programming and developer collaboration platform for chat, project work, GitHub-linked workflows, and team coordination."
-    />
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.reporoom.site/" />
     <meta property="og:site_name" content="RepoRoom" />
-    <meta property="og:image" content="/og-image.png" />
     <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="RepoRoom — Developer Workspace Messaging & GitHub Projects" />
+    <meta property="og:description" content="Real-time team chat, GitHub-linked projects, voice & video calls, and workspace tools built for developers. Stop context switching — start shipping." />
+    <meta property="og:image" content="https://www.reporoom.site/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="RepoRoom — Developer Workspace Messaging Platform" />
 
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@RepoRoomApp" />
-    <meta name="twitter:title" content="RepoRoom | Developer Platform for Messaging, Projects, and GitHub Workflows" />
-    <meta
-      name="twitter:description"
-      content="A developer and programming platform for real-time chat, team collaboration, GitHub workflows, and project execution."
-    />
-    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:creator" content="@RepoRoomApp" />
+    <meta name="twitter:title" content="RepoRoom — Developer Workspace Messaging & GitHub Projects" />
+    <meta name="twitter:description" content="Real-time team chat, GitHub-linked projects, voice & video calls, and workspace tools built for developers." />
+    <meta name="twitter:image" content="https://www.reporoom.site/og-image.png" />
+    <meta name="twitter:image:alt" content="RepoRoom — Developer Workspace Messaging Platform" />
 
-    <meta name="theme-color" content="#6d28d9" />
+    <!-- PWA / Theme -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RepoRoom" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="msapplication-config" content="none" />
+
+    <!-- Icons & Manifest -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- Structured Data: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "RepoRoom",
+      "url": "https://www.reporoom.site/",
+      "description": "Developer workspace messaging platform with GitHub-linked projects, real-time chat, voice & video calls, and team collaboration tools.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://www.reporoom.site/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Structured Data: SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "RepoRoom",
+      "url": "https://www.reporoom.site/",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Web",
+      "description": "Real-time developer workspace messaging with GitHub integration, projects, voice & video calls, and team tools.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Anobyte",
+        "url": "https://anobyte.online"
+      }
+    }
+    </script>
   </head>
 
   <body>

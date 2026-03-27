@@ -1,13 +1,15 @@
 {
   "name": "RepoRoom",
   "short_name": "RepoRoom",
-  "description": "Developer workspace messaging — chat, GitHub projects, and team tools in one place.",
+  "description": "Developer workspace messaging — chat, GitHub projects, voice & video calls, and team tools in one place.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0a0e18",
-  "theme_color": "#6d28d9",
-  "categories": ["productivity", "developer tools", "communication"],
+  "theme_color": "#3b82f6",
+  "categories": ["productivity", "developer-tools", "communication"],
+  "lang": "en",
   "icons": [
     { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" },
     { "src": "/favicon.ico", "type": "image/x-icon", "sizes": "48x48" }

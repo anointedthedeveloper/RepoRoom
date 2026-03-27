@@ -16,7 +16,7 @@
     --popover: 222 40% 13%;
     --popover-foreground: 215 25% 93%;
 
-    --primary: 252 87% 67%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 30% 20%;
@@ -25,7 +25,7 @@
     --muted: 220 30% 16%;
     --muted-foreground: 215 16% 52%;
 
-    --accent: 252 87% 67%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -33,7 +33,7 @@
 
     --border: 220 28% 18%;
     --input: 220 28% 18%;
-    --ring: 252 87% 67%;
+    --ring: 217 91% 60%;
     --radius: 0.75rem;
 
     --online: 142 71% 45%;
@@ -42,12 +42,12 @@
 
     --sidebar-background: 224 50% 6%;
     --sidebar-foreground: 215 25% 88%;
-    --sidebar-primary: 252 87% 67%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 30% 14%;
     --sidebar-accent-foreground: 215 25% 88%;
     --sidebar-border: 220 28% 12%;
-    --sidebar-ring: 252 87% 67%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   /* ── LIGHT ── */
@@ -61,7 +61,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 44% 9%;
 
-    --primary: 252 87% 60%;
+    --primary: 217 91% 55%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 92%;
@@ -70,7 +70,7 @@
     --muted: 220 14% 94%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 252 87% 60%;
+    --accent: 217 91% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -78,7 +78,7 @@
 
     --border: 220 13% 88%;
     --input: 220 13% 88%;
-    --ring: 252 87% 60%;
+    --ring: 217 91% 55%;
     --radius: 0.75rem;
 
     --online: 142 71% 40%;
@@ -87,12 +87,12 @@
 
     --sidebar-background: 220 20% 94%;
     --sidebar-foreground: 224 44% 12%;
-    --sidebar-primary: 252 87% 60%;
+    --sidebar-primary: 217 91% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 13% 88%;
     --sidebar-accent-foreground: 224 44% 12%;
     --sidebar-border: 220 13% 86%;
-    --sidebar-ring: 252 87% 60%;
+    --sidebar-ring: 217 91% 55%;
   }
 
   /* ── THEME: OCEAN (dark) ── */

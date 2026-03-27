@@ -19,7 +19,7 @@ const ThemeContext = createContext<ThemeContextType>({
 
 // theme-color values per theme+mode combination
 const THEME_COLORS: Record<string, Record<string, string>> = {
-  default: { dark: "#6d28d9", light: "#7c3aed" },
+  default: { dark: "#3b82f6", light: "#2563eb" },
   ocean:   { dark: "#0ea5e9", light: "#0284c7" },
   forest:  { dark: "#22c55e", light: "#16a34a" },
   rose:    { dark: "#f43f5e", light: "#e11d48" },
@@ -48,9 +48,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.classList.add(m);
     if (t !== "default") root.classList.add(`theme-${t}`);
 
-    // Update theme-color meta (browser tab bar / PWA menu bar)
-    const themeColor = THEME_COLORS[t]?.[m] ?? "#6d28d9";
+    const themeColor = THEME_COLORS[t]?.[m] ?? "#3b82f6";
     const bgColor = BG_COLORS[t]?.[m] ?? "#0a0e18";
+
+    // Persist so the inline script in index.html can restore on next load
+    localStorage.setItem("cf-theme-color", themeColor);
+    localStorage.setItem("cf-bg-color", bgColor);
+
     let metaTheme = document.querySelector<HTMLMetaElement>("meta[name='theme-color']");
     if (!metaTheme) {
       metaTheme = document.createElement("meta");
@@ -59,7 +63,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     metaTheme.content = themeColor;
 
-    // Also update manifest background_color via a meta tag for installed PWA
     let metaBg = document.querySelector<HTMLMetaElement>("meta[name='background-color']");
     if (!metaBg) {
       metaBg = document.createElement("meta");

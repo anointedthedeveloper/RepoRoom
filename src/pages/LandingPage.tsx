@@ -32,7 +32,7 @@ const LandingPage = () => {
   const { user } = useAuth();
   const { mode, theme, setMode, setTheme } = useThemeContext();
   const themes = [
-    { id: "default", color: "bg-violet-500", label: "Default" },
+    { id: "default", color: "bg-blue-500", label: "Default" },
     { id: "ocean", color: "bg-cyan-500", label: "Ocean" },
     { id: "forest", color: "bg-green-500", label: "Forest" },
     { id: "rose", color: "bg-rose-500", label: "Rose" },
