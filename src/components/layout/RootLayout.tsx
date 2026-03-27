@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 import AvatarBubble from "@/components/chat/AvatarBubble";
 import ThemeToggle from "@/components/chat/ThemeToggle";
+import PageLoader from "@/components/ui/PageLoader";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,11 +51,21 @@ const RootLayout = () => {
   useEffect(() => { if (isMobile) setIsCollapsed(true); }, [isMobile]);
   useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
+  const [navigating, setNavigating] = useState(false);
+  const prevPath = useState(location.pathname)[0];
+
+  useEffect(() => {
+    setNavigating(true);
+    const t = setTimeout(() => setNavigating(false), 350);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
+
   const isPublicPage = publicPages.includes(location.pathname);
 
   if (!user || isPublicPage) return (
     <>
       <ScrollToTop />
+      <AnimatePresence>{navigating && <PageLoader />}</AnimatePresence>
       <Outlet />
     </>
   );

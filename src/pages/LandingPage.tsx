@@ -1,20 +1,30 @@
 import {
   ArrowRight,
+  BookOpen,
   Check,
   CheckCheck,
+  FileText,
   Github,
+  Info,
   LayoutDashboard,
+  Map,
   MessageSquare,
   Monitor,
   Moon,
+  PenLine,
+  Shield,
+  ScrollText,
   Sparkles,
   Sun,
+  Tag,
   TerminalSquare,
   Workflow,
   Wrench,
+  Zap,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 
@@ -139,9 +149,10 @@ const LandingPage = () => {
               <p className="text-[11px] text-muted-foreground">Chat, projects, repos, and workspace tools in one place</p>
             </div>
           </div>
+
           {/* Centre nav links */}
           <nav className="hidden lg:flex items-center gap-1">
-            {(["Features", "/features"], ["Pricing", "/pricing"], ["Changelog", "/changelog"], ["About", "/about"], ["Blog", "/blog"]) && [
+            {[
               ["Features", "/features"],
               ["Pricing", "/pricing"],
               ["Changelog", "/changelog"],
@@ -153,7 +164,22 @@ const LandingPage = () => {
               </Link>
             ))}
           </nav>
+
           <div className="flex items-center gap-2">
+            {/* Theme colour swatches */}
+            <div className="hidden md:flex items-center gap-1 rounded-xl border border-border/60 bg-background/50 px-2 py-1.5">
+              {themes.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  title={t.label}
+                  className={`h-5 w-5 rounded-full ${t.color} transition-all hover:scale-110 ${
+                    theme === t.id ? "ring-2 ring-offset-1 ring-offset-background ring-primary scale-110" : "opacity-60 hover:opacity-100"
+                  }`}
+                />
+              ))}
+            </div>
+            {/* Dark / light toggle */}
             <button
               onClick={() => setMode(mode === "dark" ? "light" : "dark")}
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-muted-foreground transition-all hover:bg-background hover:text-foreground"
@@ -478,20 +504,22 @@ const LandingPage = () => {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Features", path: "/features", desc: "See everything RepoRoom can do for your team.", emoji: "⚡" },
-              { label: "Pricing", path: "/pricing", desc: "Free, Pro, and Enterprise plans explained.", emoji: "💳" },
-              { label: "Changelog", path: "/changelog", desc: "Every update and improvement we've shipped.", emoji: "📋" },
-              { label: "Roadmap", path: "/roadmap", desc: "What's coming next and what we're building.", emoji: "🗺️" },
-              { label: "About", path: "/about", desc: "The story behind RepoRoom and who built it.", emoji: "👋" },
-              { label: "Blog", path: "/blog", desc: "Engineering deep-dives and product stories.", emoji: "✍️" },
-              { label: "Privacy", path: "/privacy", desc: "How we handle and protect your data.", emoji: "🔒" },
-              { label: "Terms", path: "/terms", desc: "The rules for using RepoRoom.", emoji: "📄" },
-            ].map((item) => (
-              <Link key={item.path} to={item.path}
+              { label: "Features",  path: "/features",  desc: "See everything RepoRoom can do for your team.",    Icon: Zap },
+              { label: "Pricing",   path: "/pricing",   desc: "Free, Pro, and Enterprise plans explained.",        Icon: Tag },
+              { label: "Changelog", path: "/changelog", desc: "Every update and improvement we've shipped.",       Icon: BookOpen },
+              { label: "Roadmap",   path: "/roadmap",   desc: "What's coming next and what we're building.",      Icon: Map },
+              { label: "About",     path: "/about",     desc: "The story behind RepoRoom and who built it.",      Icon: Info },
+              { label: "Blog",      path: "/blog",      desc: "Engineering deep-dives and product stories.",      Icon: PenLine },
+              { label: "Privacy",   path: "/privacy",   desc: "How we handle and protect your data.",             Icon: Shield },
+              { label: "Terms",     path: "/terms",     desc: "The rules for using RepoRoom.",                    Icon: ScrollText },
+            ].map(({ label, path, desc, Icon }) => (
+              <Link key={path} to={path}
                 className="group rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur-xl hover:border-primary/30 hover:bg-card/80 transition-all">
-                <span className="text-2xl mb-3 block">{item.emoji}</span>
-                <p className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{item.label}</p>
-                <p className="text-xs text-muted-foreground leading-5">{item.desc}</p>
+                <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <p className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{label}</p>
+                <p className="text-xs text-muted-foreground leading-5">{desc}</p>
               </Link>
             ))}
           </div>
@@ -554,7 +582,7 @@ const LandingPage = () => {
             <p>&copy; 2026 RepoRoom. All rights reserved.</p>
             <p className="flex items-center gap-2">
               Powered by{" "}
-              <a href="https://github.com/anointedthedeveloper" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors">
+              <a href="https://anobyte.online" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors">
                 <Sparkles className="h-3 w-3 text-primary" />
                 Anobyte
               </a>
