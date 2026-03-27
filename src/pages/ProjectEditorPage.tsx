@@ -169,7 +169,7 @@ const ProjectEditorPage = () => {
               <p className="text-base font-semibold text-foreground">{project.name}</p>
               <p className="mt-1 text-sm text-muted-foreground max-w-sm">
                 {project.linked_repo_full_name
-                  ? "Click "Browse repo files" to open the editor."
+                  ? 'Click "Browse repo files" to open the editor.'
                   : "Link a GitHub repo to this project to start editing files."}
               </p>
             </div>
