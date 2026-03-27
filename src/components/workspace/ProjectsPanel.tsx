@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2, FileText, ChevronDown, ChevronRight, Trash2, FolderOpen, ExternalLink, FilePlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, Plus, FolderKanban, Rocket, PauseCircle, Compass, CheckCircle2, Link2, FileText, ChevronDown, ChevronRight, Trash2, FolderOpen, ExternalLink, FilePlus, Code2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { WorkspaceProject, WorkspaceProjectFile } from "@/hooks/useWorkspace";
 
@@ -24,6 +25,7 @@ const STATUS_CONFIG = {
 };
 
 const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, onUpdateStatus, onUpdateRepo, onRemoveFile, onOpenFileBrowser, onClose, fullPage = false }: Props) => {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [linkedRepo, setLinkedRepo] = useState("");
@@ -102,6 +104,17 @@ const ProjectsPanel = ({ projects, linkedRepos, projectFiles, onCreateProject, o
                     {project.description && <p className="text-xs text-muted-foreground mt-0.5">{project.description}</p>}
                   </div>
                 </div>
+
+                {/* Open Editor button */}
+                {project.linked_repo_full_name && (
+                  <button
+                    onClick={() => navigate(`/project/${project.id}/editor`)}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Code2 className="h-3.5 w-3.5" />
+                    Open Editor
+                  </button>
+                )}
 
                 {/* Badges */}
                 <div className="flex items-center gap-1.5 flex-wrap">
