@@ -39,83 +39,72 @@ const PageLayout = ({ children, maxWidth = "lg" }: Props) => {
 
       {/* ── Sticky nav ── */}
       <header className="sticky top-0 z-50 w-full">
-        {/* Frosted bar */}
-        <div className="border-b border-border/40 bg-background/75 backdrop-blur-2xl shadow-[0_1px_0_0_hsl(var(--border)/0.4)]">
-          <div className={cn("mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8", widthClass)}>
+        <div className="border-b border-border/40 bg-background/80 backdrop-blur-2xl shadow-[0_1px_0_0_hsl(var(--border)/0.4)]">
+          <div className="mx-auto flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8 max-w-screen-2xl">
 
-            {/* Left — logo + back crumb */}
-            <div className="flex items-center gap-3 min-w-0">
-              <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-md shadow-primary/30 group-hover:shadow-primary/50 transition-shadow">
-                  <MessageSquare className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="text-sm font-bold text-foreground hidden sm:block tracking-tight">RepoRoom</span>
-              </Link>
+            {/* Logo — always visible, fixed width */}
+            <Link to="/" className="flex items-center gap-2 shrink-0 group">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-md shadow-primary/30 group-hover:shadow-primary/50 transition-shadow">
+                <MessageSquare className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-sm font-bold text-foreground hidden sm:block tracking-tight">RepoRoom</span>
+            </Link>
 
-              {/* Breadcrumb separator + current page */}
-              {currentPage && (
-                <div className="hidden sm:flex items-center gap-1.5 text-muted-foreground">
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground/70">{currentPage.label}</span>
-                </div>
-              )}
-            </div>
+            {/* Breadcrumb — only when no pill nav visible */}
+            {currentPage && (
+              <div className="flex items-center gap-1 text-muted-foreground md:hidden">
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-sm font-medium text-foreground/70 truncate max-w-[120px]">{currentPage.label}</span>
+              </div>
+            )}
 
-            {/* Centre — pill nav (desktop) */}
-            <nav className="hidden md:flex items-center gap-0.5 rounded-2xl border border-border/50 bg-muted/40 px-1.5 py-1 backdrop-blur-sm">
-              {navLinks.map((l) => {
-                const active = location.pathname === l.path;
-                return (
-                  <Link
-                    key={l.path}
-                    to={l.path}
-                    className={cn(
-                      "relative px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150",
-                      active
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                    )}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="nav-pill"
-                        className="absolute inset-0 rounded-xl bg-background shadow-sm border border-border/50"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">{l.label}</span>
-                  </Link>
-                );
-              })}
+            {/* Pill nav — scrollable so it never wraps or overflows */}
+            <nav className="hidden md:flex flex-1 justify-center overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-0.5 rounded-2xl border border-border/50 bg-muted/40 px-1.5 py-1 backdrop-blur-sm">
+                {navLinks.map((l) => {
+                  const active = location.pathname === l.path;
+                  return (
+                    <Link
+                      key={l.path}
+                      to={l.path}
+                      className={cn(
+                        "relative whitespace-nowrap px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150",
+                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="nav-pill"
+                          className="absolute inset-0 rounded-xl bg-background shadow-sm border border-border/50"
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{l.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </nav>
 
-            {/* Right — auth + hamburger */}
-            <div className="flex items-center gap-2">
+            {/* Right — auth CTA + hamburger, fixed width */}
+            <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
               {user ? (
-                <Link
-                  to="/dashboard"
-                  className="hidden sm:inline-flex items-center gap-1.5 rounded-xl gradient-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:opacity-90 transition-opacity"
-                >
+                <Link to="/dashboard"
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-xl gradient-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:opacity-90 transition-opacity whitespace-nowrap">
                   Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link
-                    to="/auth"
-                    className="hidden sm:inline-flex rounded-xl border border-border/60 bg-background/60 px-3.5 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                  >
+                  <Link to="/auth"
+                    className="hidden lg:inline-flex rounded-xl border border-border/60 bg-background/60 px-3.5 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap">
                     Sign in
                   </Link>
-                  <Link
-                    to="/auth"
-                    className="rounded-xl gradient-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:opacity-90 transition-opacity"
-                  >
+                  <Link to="/auth"
+                    className="rounded-xl gradient-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:opacity-90 transition-opacity whitespace-nowrap">
                     Get Started
                   </Link>
                 </>
               )}
-
-              {/* Hamburger */}
               <button
                 onClick={() => setMobileOpen((v) => !v)}
                 className="md:hidden h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
