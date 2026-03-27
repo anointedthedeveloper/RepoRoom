@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Shield } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const sections = [
   { title: "Information We Collect", body: "We collect information you provide directly, such as your email address, username, and display name when you create an account. We also collect content you create within the platform, including messages, project files, and workspace data." },
@@ -12,7 +13,13 @@ const sections = [
   { title: "Contact", body: "If you have any questions about this Privacy Policy, please contact us at anointedthedeveloper@gmail.com." },
 ];
 
-const PrivacyPage = () => (
+const PrivacyPage = () => {
+  useSEO({
+    title: "Privacy Policy",
+    description: "RepoRoom's privacy policy — we collect only what we need, never sell your data, your code stays on GitHub, and you can delete your account any time.",
+    path: "/privacy",
+  });
+  return (
   <PageLayout maxWidth="md">
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <div className="mb-14">
@@ -45,6 +52,7 @@ const PrivacyPage = () => (
       </div>
     </motion.div>
   </PageLayout>
-);
+  );
+};
 
 export default PrivacyPage;

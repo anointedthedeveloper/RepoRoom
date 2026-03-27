@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Github, Mail, Code2, Zap, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const stack = [
   { label: "React 18", desc: "UI framework" },
@@ -14,7 +15,13 @@ const stack = [
   { label: "Vercel", desc: "Deployment" },
 ];
 
-const AboutPage = () => (
+const AboutPage = () => {
+  useSEO({
+    title: "About",
+    description: "The story behind RepoRoom — built by Anointed the Developer in Lagos, Nigeria. A developer messaging platform that treats your codebase as a first-class citizen.",
+    path: "/about",
+  });
+  return (
   <PageLayout maxWidth="md">
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       {/* Hero */}
@@ -103,6 +110,7 @@ const AboutPage = () => (
       </div>
     </motion.div>
   </PageLayout>
-);
+  );
+};
 
 export default AboutPage;

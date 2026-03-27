@@ -24,11 +24,18 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+import useSEO from "@/hooks/useSEO";
 
 const LandingPage = () => {
+  useSEO({
+    title: "Developer Workspace Messaging & GitHub Projects",
+    description: "RepoRoom combines real-time team chat, GitHub-linked projects, voice & video calls, and workspace tools in one place. Stop context switching — start shipping.",
+    path: "/",
+    image: "https://www.reporoom.site/assets/img1%20(2).png",
+  });
   const { user } = useAuth();
   const { mode, theme, setMode, setTheme } = useThemeContext();
   const themes = [

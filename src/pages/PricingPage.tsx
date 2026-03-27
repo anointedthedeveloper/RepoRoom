@@ -4,8 +4,14 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const PricingPage = () => {
+  useSEO({
+    title: "Pricing",
+    description: "RepoRoom pricing — Free, Pro at $12/user/month, and Enterprise. Start free with no credit card. Upgrade when your team can't live without it.",
+    path: "/pricing",
+  });
   const { user } = useAuth();
   const [yearly, setYearly] = useState(false);
 

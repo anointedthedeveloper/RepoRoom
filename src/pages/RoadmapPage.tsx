@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, Circle, Mail } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const groups = [
   {
@@ -54,7 +55,13 @@ const groups = [
   },
 ];
 
-const RoadmapPage = () => (
+const RoadmapPage = () => {
+  useSEO({
+    title: "Roadmap",
+    description: "See what's shipped, in progress, and planned for RepoRoom — full transparency on where the platform is headed.",
+    path: "/roadmap",
+  });
+  return (
   <PageLayout maxWidth="md">
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mb-14">
       <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-6">
@@ -104,6 +111,7 @@ const RoadmapPage = () => (
       </a>
     </motion.div>
   </PageLayout>
-);
+  );
+};
 
 export default RoadmapPage;

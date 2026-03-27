@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const posts = [
   {
@@ -32,7 +33,13 @@ const posts = [
   },
 ];
 
-const BlogPage = () => (
+const BlogPage = () => {
+  useSEO({
+    title: "Blog",
+    description: "Engineering deep-dives, product stories, and updates from the RepoRoom team — WebRTC, Supabase Realtime, and developer tooling.",
+    path: "/blog",
+  });
+  return (
   <PageLayout maxWidth="md">
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mb-14">
       <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-6">
@@ -61,6 +68,7 @@ const BlogPage = () => (
       ))}
     </div>
   </PageLayout>
-);
+  );
+};
 
 export default BlogPage;

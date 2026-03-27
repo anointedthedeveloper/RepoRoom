@@ -16,7 +16,7 @@ const navLinks = [
 ];
 
 const themes = [
-  { id: "default", label: "Default", color: "bg-violet-500" },
+  { id: "default", label: "Default", color: "bg-blue-500" },
   { id: "ocean",   label: "Ocean",   color: "bg-sky-500" },
   { id: "forest",  label: "Forest",  color: "bg-emerald-500" },
   { id: "rose",    label: "Rose",    color: "bg-rose-500" },

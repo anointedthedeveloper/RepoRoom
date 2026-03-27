@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ScrollText } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import useSEO from "@/hooks/useSEO";
 
 const sections = [
   { title: "Acceptance of Terms", body: "By accessing or using RepoRoom, you agree to be bound by these Terms of Service. If you do not agree, please do not use the service." },
@@ -14,7 +15,13 @@ const sections = [
   { title: "Contact", body: "Questions about these Terms? Contact us at anointedthedeveloper@gmail.com." },
 ];
 
-const TermsPage = () => (
+const TermsPage = () => {
+  useSEO({
+    title: "Terms of Service",
+    description: "RepoRoom's terms of service — use the platform lawfully, your content is yours, and we integrate with GitHub and Supabase under their respective terms.",
+    path: "/terms",
+  });
+  return (
   <PageLayout maxWidth="md">
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <div className="mb-14">
@@ -47,6 +54,7 @@ const TermsPage = () => (
       </div>
     </motion.div>
   </PageLayout>
-);
+  );
+};
 
 export default TermsPage;
