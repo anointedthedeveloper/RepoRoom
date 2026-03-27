@@ -8,7 +8,7 @@ interface SEOProps {
 }
 
 const BASE_URL = "https://www.reporoom.site";
-const DEFAULT_IMAGE = `${BASE_URL}/assets/img1%20(2).png`;
+const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
 const setMeta = (name: string, nameAttr: "name" | "property", content: string) => {
   let el = document.querySelector<HTMLMetaElement>(`meta[${nameAttr}="${name}"]`);

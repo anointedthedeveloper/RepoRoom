@@ -34,7 +34,7 @@ const LandingPage = () => {
     title: "Developer Workspace Messaging & GitHub Projects",
     description: "RepoRoom combines real-time team chat, GitHub-linked projects, voice & video calls, and workspace tools in one place. Stop context switching — start shipping.",
     path: "/",
-    image: "https://www.reporoom.site/assets/img1%20(2).png",
+    image: "https://www.reporoom.site/og-image.png",
   });
   const { user } = useAuth();
   const { mode, theme, setMode, setTheme } = useThemeContext();
