@@ -154,19 +154,24 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
   const [creatingItem, setCreatingItem] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [terminalTab, setTerminalTab] = useState<"terminal" | "npm" | "browser">("terminal");
+  const [terminalTab, setTerminalTab] = useState<"terminal" | "npm" | "browser" | "search">("terminal");
   const [npmInput, setNpmInput] = useState("");
   const [npmLines, setNpmLines] = useState<ConsoleLine[]>([
     { id: "npm-boot", kind: "info", text: "npm sandbox — commands: install <pkg>, uninstall <pkg>, list, clear" },
   ]);
-  const [browserUrl, setBrowserUrl] = useState("https://chatflowv.vercel.app");
-  const [browserInput, setBrowserInput] = useState("https://chatflowv.vercel.app");
+  const [browserUrl, setBrowserUrl] = useState("https://reporoom.site");
+  const [browserInput, setBrowserInput] = useState("https://reporoom.site");
   const [browserKey, setBrowserKey] = useState(0);
   const [goLiveUrl, setGoLiveUrl] = useState<string | null>(null);
   const npmEndRef = useRef<HTMLDivElement>(null);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([
-    { id: "boot", kind: "info", text: "Sandbox ready. Commands: help, run, preview, info, clear" },
+    { id: "boot", kind: "info", text: `RepoRoom Editor — ${owner}/${repo} @ ${defaultBranch}` },
+    { id: "boot2", kind: "info", text: "Type 'help' for available commands." },
   ]);
+  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
+  const [historyIdx, setHistoryIdx] = useState(-1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ path: string; line: number; text: string }[]>([]);
   
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const activeTab = useMemo(() => tabs.find(t => t.path === activeTabPath), [tabs, activeTabPath]);
@@ -479,30 +484,79 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
     const command = consoleInput.trim();
     if (!command) return;
     pushConsole("input", command);
+    setCmdHistory(prev => [command, ...prev.slice(0, 49)]);
+    setHistoryIdx(-1);
     setConsoleInput("");
     if (command === "help") {
-      ["help", "run", "preview", "info", "clear"].forEach((item) => pushConsole("info", item));
+      pushConsole("info", "Available commands:");
+      pushConsole("stdout", "  help          — show this message");
+      pushConsole("stdout", "  run           — run / preview active file");
+      pushConsole("stdout", "  preview       — reload preview panel");
+      pushConsole("stdout", "  info          — show repo + file info");
+      pushConsole("stdout", "  ls            — list files in repo root");
+      pushConsole("stdout", "  cat <file>    — print file content");
+      pushConsole("stdout", "  open <file>   — open file in editor");
+      pushConsole("stdout", "  lines         — count lines in active file");
+      pushConsole("stdout", "  word-count    — word count of active file");
+      pushConsole("stdout", "  copy          — copy active file content");
+      pushConsole("stdout", "  clear         — clear terminal");
       return;
     }
-    if (command === "clear") {
-      setConsoleLines([]);
-      return;
-    }
-    if (command === "run") {
-      runFile();
-      return;
-    }
-    if (command === "preview") {
-      setPreviewNonce((value) => value + 1);
-      pushConsole("info", "Preview reloaded.");
-      return;
-    }
+    if (command === "clear") { setConsoleLines([]); return; }
+    if (command === "run") { runFile(); return; }
+    if (command === "preview") { setPreviewNonce(v => v + 1); pushConsole("info", "Preview reloaded."); return; }
     if (command === "info") {
-      pushConsole("info", `${owner}/${repo} on ${branch}`);
-      pushConsole("info", activeTab ? activeTab.path : "No file selected");
+      pushConsole("info", `Repo:   ${owner}/${repo}`);
+      pushConsole("info", `Branch: ${branch}`);
+      pushConsole("info", `Files:  ${tree.filter(n => n.type === "blob").length} files, ${tree.filter(n => n.type === "tree").length} folders`);
+      pushConsole("info", `Open tabs: ${tabs.length}`);
+      if (activeTab) pushConsole("info", `Active: ${activeTab.path} (${activeTab.editContent.split("\n").length} lines)`);
       return;
     }
-    pushConsole("stderr", `Unknown command: ${command}. Try: help, run, preview, info, clear`);
+    if (command === "ls") {
+      const roots = tree.filter(n => !n.path.includes("/"));
+      roots.forEach(n => pushConsole("stdout", `  ${n.type === "tree" ? "📁" : "📄"} ${n.name}`));
+      pushConsole("info", `${roots.length} items`);
+      return;
+    }
+    if (command.startsWith("cat ")) {
+      const filePath = command.slice(4).trim();
+      const node = tree.find(n => n.path === filePath || n.name === filePath);
+      if (!node) { pushConsole("stderr", `File not found: ${filePath}`); return; }
+      const tab = tabs.find(t => t.path === node.path);
+      if (tab) {
+        tab.content.split("\n").slice(0, 50).forEach((l, i) => pushConsole("stdout", `${String(i + 1).padStart(3)} ${l}`));
+        if (tab.content.split("\n").length > 50) pushConsole("info", "... (truncated to 50 lines)");
+      } else {
+        pushConsole("info", `Open ${filePath} first to cat it.`);
+      }
+      return;
+    }
+    if (command.startsWith("open ")) {
+      const filePath = command.slice(5).trim();
+      const node = tree.find(n => n.path === filePath || n.name === filePath);
+      if (!node) { pushConsole("stderr", `File not found: ${filePath}`); return; }
+      void openFile(node);
+      pushConsole("info", `Opening ${node.path}...`);
+      return;
+    }
+    if (command === "lines") {
+      if (!activeTab) { pushConsole("stderr", "No file open."); return; }
+      pushConsole("stdout", `${activeTab.editContent.split("\n").length} lines — ${activeTab.path}`);
+      return;
+    }
+    if (command === "word-count") {
+      if (!activeTab) { pushConsole("stderr", "No file open."); return; }
+      const words = activeTab.editContent.trim().split(/\s+/).filter(Boolean).length;
+      pushConsole("stdout", `${words} words — ${activeTab.path}`);
+      return;
+    }
+    if (command === "copy") {
+      if (!activeTab) { pushConsole("stderr", "No file open."); return; }
+      navigator.clipboard.writeText(activeTab.editContent).then(() => pushConsole("info", "Copied to clipboard."));
+      return;
+    }
+    pushConsole("stderr", `Unknown command: '${command}'. Type 'help' for available commands.`);
   };
 
   const getChildren = (parentPath: string) => tree.filter((node) => {
@@ -884,21 +938,24 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                               <span className="text-xs font-medium text-muted-foreground animate-pulse tracking-widest uppercase">Fetching Source</span>
                             </div>
                           ) : (
-                            <div className="flex-1 overflow-auto flex">
+                            <div className="flex-1 overflow-auto" style={{ position: "relative" }}>
                               <Highlight
                                 theme={editorTheme}
-                                code={activeTab.editContent}
+                                code={activeTab.editContent || " "}
                                 language={EXT_LANG[activeTab.name.split(".").pop() || ""] || "text"}
                               >
                                 {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                  <div className="relative flex-1 min-w-max">
-                                    <pre className={cn(className, "m-0 p-6 font-mono text-[14px] outline-none min-w-full leading-relaxed")} style={{ ...style, backgroundColor: "transparent" }}>
+                                  <div style={{ position: "relative", minWidth: "max-content", minHeight: "100%" }}>
+                                    <pre
+                                      className={cn(className, "m-0 p-6 font-mono text-[13px] leading-6 outline-none")}
+                                      style={{ ...style, backgroundColor: "transparent", minWidth: "max-content" }}
+                                    >
                                       {tokens.map((line, i) => (
-                                        <div key={i} {...getLineProps({ line, key: i })} className="flex group/line">
-                                          <span className="w-12 text-right pr-6 select-none opacity-20 group-hover/line:opacity-50 text-[11px] shrink-0 font-medium transition-opacity">{i + 1}</span>
-                                          <span className="flex-1">
+                                        <div key={i} {...getLineProps({ line })} className="flex group/line">
+                                          <span className="w-10 text-right pr-5 select-none opacity-20 group-hover/line:opacity-50 text-[11px] shrink-0 font-medium transition-opacity sticky left-0 bg-inherit">{i + 1}</span>
+                                          <span className="flex-1 pr-12">
                                             {line.map((token, key) => (
-                                              <span key={key} {...getTokenProps({ token, key })} />
+                                              <span key={key} {...getTokenProps({ token })} />
                                             ))}
                                           </span>
                                         </div>
@@ -907,8 +964,26 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                                     <textarea
                                       value={activeTab.editContent}
                                       onChange={(e) => updateActiveTabContent(e.target.value)}
-                                      className="absolute inset-0 w-full h-full p-6 pl-[4.5rem] bg-transparent text-transparent caret-primary resize-none outline-none font-mono text-[14px] leading-relaxed z-10 overflow-auto"
                                       spellCheck={false}
+                                      style={{
+                                        position: "absolute",
+                                        top: 0, left: 0,
+                                        width: "100%",
+                                        height: "100%",
+                                        padding: "24px 48px 24px 64px",
+                                        background: "transparent",
+                                        color: "transparent",
+                                        caretColor: "hsl(var(--primary))",
+                                        resize: "none",
+                                        outline: "none",
+                                        fontFamily: "ui-monospace, monospace",
+                                        fontSize: "13px",
+                                        lineHeight: "24px",
+                                        whiteSpace: "pre",
+                                        overflowWrap: "normal",
+                                        overflow: "hidden",
+                                        zIndex: 10,
+                                      }}
                                     />
                                   </div>
                                 )}
@@ -986,17 +1061,23 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
 
                       {/* Terminal tabs */}
                       <div className="flex border-b border-border/20 px-4 gap-4">
-                        {(["terminal", "npm", "browser"] as const).map(t => (
+                        {(["terminal", "npm", "search", "browser"] as const).map(t => (
                           <button key={t} onClick={() => setTerminalTab(t)}
                             className={cn("text-[10px] font-black uppercase tracking-[0.15em] py-2.5 transition-colors flex items-center gap-1.5",
                               terminalTab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground")}>
                             {t === "npm" && <Package className="h-3 w-3" />}
+                            {t === "search" && <Search className="h-3 w-3" />}
                             {t === "browser" && <Globe className="h-3 w-3" />}
                             {t}
                           </button>
                         ))}
                         <div className="ml-auto flex items-center gap-1 pb-1">
-                          {terminalTab === "terminal" && <button onClick={() => setConsoleLines([])} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground" title="Clear"><RefreshCw className="h-3.5 w-3.5" /></button>}
+                          {terminalTab === "terminal" && (
+                            <>
+                              <button onClick={() => { if (activeTab) navigator.clipboard.writeText(activeTab.editContent); }} title="Copy file" className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"><Copy className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => setConsoleLines([])} title="Clear" className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"><RefreshCw className="h-3.5 w-3.5" /></button>
+                            </>
+                          )}
                           {terminalTab === "npm" && <button onClick={() => setNpmLines([])} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground" title="Clear"><RefreshCw className="h-3.5 w-3.5" /></button>}
                         </div>
                       </div>
@@ -1020,9 +1101,22 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                           </div>
                           <div className="p-4 px-6 border-t border-border/20 bg-muted/10 flex items-center gap-3">
                             <span className="text-sky-500 font-bold text-xs">$</span>
-                            <input value={consoleInput} onChange={e => setConsoleInput(e.target.value)}
-                              onKeyDown={e => e.key === "Enter" && runConsoleCommand()}
-                              placeholder="help, run, preview, info, clear"
+                            <input value={consoleInput} onChange={e => { setConsoleInput(e.target.value); setHistoryIdx(-1); }}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") { runConsoleCommand(); }
+                                else if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  const idx = Math.min(historyIdx + 1, cmdHistory.length - 1);
+                                  setHistoryIdx(idx);
+                                  setConsoleInput(cmdHistory[idx] ?? "");
+                                } else if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  const idx = Math.max(historyIdx - 1, -1);
+                                  setHistoryIdx(idx);
+                                  setConsoleInput(idx === -1 ? "" : cmdHistory[idx]);
+                                }
+                              }}
+                              placeholder="Type a command... (↑↓ for history)"
                               className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50" />
                           </div>
                         </>
@@ -1053,6 +1147,54 @@ const RepoFileBrowser = ({ owner, repo, defaultBranch, projects = [], onImportTo
                               className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50" />
                           </div>
                         </>
+                      )}
+
+                      {/* Search */}
+                      {terminalTab === "search" && (
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                          <div className="px-4 py-2 border-b border-border/20 bg-muted/10 flex items-center gap-2">
+                            <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <input
+                              value={searchQuery}
+                              onChange={e => {
+                                const q = e.target.value;
+                                setSearchQuery(q);
+                                if (!q.trim()) { setSearchResults([]); return; }
+                                const results: { path: string; line: number; text: string }[] = [];
+                                tabs.forEach(tab => {
+                                  tab.content.split("\n").forEach((lineText, i) => {
+                                    if (lineText.toLowerCase().includes(q.toLowerCase())) {
+                                      results.push({ path: tab.path, line: i + 1, text: lineText.trim() });
+                                    }
+                                  });
+                                });
+                                setSearchResults(results.slice(0, 100));
+                              }}
+                              placeholder="Search in open files..."
+                              className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                              autoFocus
+                            />
+                            {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
+                          </div>
+                          <div className="flex-1 overflow-y-auto">
+                            {searchResults.length === 0 && searchQuery && (
+                              <p className="text-xs text-muted-foreground text-center py-6">No results in open files</p>
+                            )}
+                            {searchResults.length === 0 && !searchQuery && (
+                              <p className="text-xs text-muted-foreground text-center py-6">Search across open tabs</p>
+                            )}
+                            {searchResults.map((r, i) => (
+                              <button key={i} onClick={() => setActiveTabPath(r.path)}
+                                className="w-full flex items-start gap-3 px-4 py-2 hover:bg-muted/40 transition-colors text-left border-b border-border/20">
+                                <span className="text-[10px] text-muted-foreground font-mono shrink-0 mt-0.5 w-8 text-right">{r.line}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] text-primary truncate">{r.path}</p>
+                                  <p className="text-xs font-mono text-foreground/80 truncate">{r.text}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
 
                       {/* Mini Browser */}
