@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface LinkPreview {
   url: string;
@@ -14,7 +13,8 @@ const cache = new Map<string, LinkPreview | null>();
 const URL_RE = /(https?:\/\/[^\s]+)/;
 
 export function extractUrl(text: string): string | null {
-  return text.match(URL_RE)?.[1] ?? null;
+  const m = text.match(URL_RE);
+  return m?.[1] ?? null;
 }
 
 interface Props {
@@ -32,14 +32,27 @@ const LinkPreviewCard = ({ url, isMine }: Props) => {
       setLoading(false);
       return;
     }
+
     setLoading(true);
-    supabase.functions
-      .invoke("link-preview", { body: { url } })
-      .then(({ data, error }) => {
-        const result = (!error && data && !data.error) ? data as LinkPreview : null;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+    fetch(`${supabaseUrl}/functions/v1/link-preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ url }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const result = data && !data.error ? (data as LinkPreview) : null;
         cache.set(url, result);
         setPreview(result);
       })
+      .catch(() => { cache.set(url, null); })
       .finally(() => setLoading(false));
   }, [url]);
 
