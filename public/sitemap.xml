@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <url>
+    <loc>https://www.reporoom.site/</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(1).png</image:loc>
+      <image:title>RepoRoom — Developer Workspace</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(2).png</image:loc>
+      <image:title>RepoRoom — Chat Interface</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(3).png</image:loc>
+      <image:title>RepoRoom — GitHub Integration</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(4).png</image:loc>
+      <image:title>RepoRoom — Projects View</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(5).png</image:loc>
+      <image:title>RepoRoom — Dashboard</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.reporoom.site/assets/img1%20(6).png</image:loc>
+      <image:title>RepoRoom — Workspace Tools</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/features</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/pricing</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/changelog</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/roadmap</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/about</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/blog</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/privacy</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://www.reporoom.site/terms</loc>
+    <lastmod>2025-06-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+</urlset>
