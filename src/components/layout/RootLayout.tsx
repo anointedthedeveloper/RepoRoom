@@ -1,12 +1,34 @@
 import { Outlet, NavLink, useNavigate, useLocation, Link } from "react-router-dom";
 import {
-  LayoutDashboard, MessageSquare, LayoutGrid, Settings, LogOut,
+  LayoutDashboard, LayoutGrid, Settings, LogOut,
   PanelLeftClose, PanelLeftOpen, Menu, X,
   BookOpen, Tag, Map, Info, FileText, Shield, ScrollText, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+
+const FaviconLogo = ({ className }: { className?: string }) => {
+  const { mode } = useThemeContext();
+  const bg = mode === "light" ? "#f0f4ff" : "#0d1117";
+  const panel = mode === "light" ? "#ffffff" : "#161b22";
+  const bar = mode === "light" ? "#e2e8f0" : "#21262d";
+  const border = mode === "light" ? "#cbd5e1" : "#30363d";
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" className={className}>
+      <rect width="32" height="32" rx="8" fill={bg}/>
+      <rect x="4" y="5" width="24" height="22" rx="4" fill={panel} stroke={border} strokeWidth="1"/>
+      <rect x="4" y="5" width="24" height="6" rx="4" fill={bar}/>
+      <rect x="8" y="5" width="24" height="3" fill={bar}/>
+      <circle cx="9" cy="8" r="1.5" fill="#ff5f57"/>
+      <circle cx="14" cy="8" r="1.5" fill="#febc2e"/>
+      <circle cx="19" cy="8" r="1.5" fill="#28c840"/>
+      <path d="M8 18.5 L12 16 L8 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M24 18.5 L20 16 L24 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="17.5" y1="12.5" x2="14.5" y2="19.5" stroke="#3fb950" strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+};
 import AvatarBubble from "@/components/chat/AvatarBubble";
 import ThemeToggle from "@/components/chat/ThemeToggle";
 import PageLoader from "@/components/ui/PageLoader";
@@ -116,9 +138,9 @@ const RootLayout = () => {
         )}>
           <button
             onClick={() => navigate("/")}
-            className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all"
+            className="h-9 w-9 rounded-xl overflow-hidden shrink-0 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all"
           >
-            <MessageSquare className="h-4 w-4 text-primary-foreground" />
+            <FaviconLogo className="h-full w-full" />
           </button>
 
           <AnimatePresence>

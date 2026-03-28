@@ -1,10 +1,32 @@
-import { MessageSquare, Menu, X, Github, Mail, Sparkles, ChevronRight, Sun, Moon, Check } from "lucide-react";
+import { Menu, X, Github, Mail, Sparkles, ChevronRight, Sun, Moon, Check } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
+
+const FaviconLogo = ({ className }: { className?: string }) => {
+  const { mode } = useThemeContext();
+  const bg = mode === "light" ? "#f0f4ff" : "#0d1117";
+  const panel = mode === "light" ? "#ffffff" : "#161b22";
+  const bar = mode === "light" ? "#e2e8f0" : "#21262d";
+  const border = mode === "light" ? "#cbd5e1" : "#30363d";
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" className={className}>
+      <rect width="32" height="32" rx="8" fill={bg}/>
+      <rect x="4" y="5" width="24" height="22" rx="4" fill={panel} stroke={border} strokeWidth="1"/>
+      <rect x="4" y="5" width="24" height="6" rx="4" fill={bar}/>
+      <rect x="8" y="5" width="24" height="3" fill={bar}/>
+      <circle cx="9" cy="8" r="1.5" fill="#ff5f57"/>
+      <circle cx="14" cy="8" r="1.5" fill="#febc2e"/>
+      <circle cx="19" cy="8" r="1.5" fill="#28c840"/>
+      <path d="M8 18.5 L12 16 L8 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M24 18.5 L20 16 L24 13.5" stroke="#58a6ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="17.5" y1="12.5" x2="14.5" y2="19.5" stroke="#3fb950" strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+};
 
 const navLinks = [
   { label: "Features",  path: "/features" },
@@ -67,8 +89,8 @@ const PageLayout = ({ children, maxWidth = "lg" }: Props) => {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0 group">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-md shadow-primary/30 group-hover:shadow-primary/50 transition-shadow">
-                <MessageSquare className="h-4 w-4 text-primary-foreground" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-primary/30 group-hover:shadow-primary/50 transition-shadow">
+                <FaviconLogo className="h-full w-full" />
               </div>
               <span className="text-sm font-bold text-foreground hidden sm:block tracking-tight">RepoRoom</span>
             </Link>
@@ -303,8 +325,8 @@ const PageLayout = ({ children, maxWidth = "lg" }: Props) => {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 mb-10">
             <div className="sm:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary shadow-md shadow-primary/20">
-                  <MessageSquare className="h-4 w-4 text-primary-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-md shadow-primary/20">
+                  <FaviconLogo className="h-full w-full" />
                 </div>
                 <span className="text-base font-bold text-foreground">RepoRoom</span>
               </div>
