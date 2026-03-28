@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Hash, MessageCircle, MessageSquare, Send, Smile } from "lucide-react";
+import { Hash, MessageCircle, Send, Smile } from "lucide-react";
 import MessageBubble from "@/components/chat/MessageBubble";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import type { Channel } from "@/hooks/useWorkspace";
@@ -81,8 +81,19 @@ const WorkspaceChat = ({
       <div className="flex-1 overflow-y-auto py-3">
         {!activeChannel && (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-            <div className="h-16 w-16 rounded-[22px] border border-border/70 bg-background/80 flex items-center justify-center shadow-sm">
-              <MessageSquare className="h-7 w-7 text-primary" />
+            <div className="h-16 w-16 rounded-[22px] overflow-hidden border border-border/70 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="h-full w-full">
+                <rect width="100" height="100" rx="22" fill="#0f1117"/>
+                <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+                <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+                <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+                <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+                <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+                <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+                <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+              </svg>
             </div>
             <div className="space-y-1">
               <p className="text-base font-semibold text-foreground">Choose a channel to start working</p>

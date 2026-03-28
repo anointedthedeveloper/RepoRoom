@@ -338,8 +338,19 @@ const ChatSidebar = ({ chats, activeChatId, onSelectChat, onCreateDM, onCreateGr
       <div className="flex-1 overflow-y-auto">
         {displayChats.length === 0 && !search && (
           <div className="px-4 py-10 text-center">
-            <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-3 opacity-50">
-              {activeTab === "requests" ? <UserCheck className="h-6 w-6 text-primary-foreground" /> : <MessageSquarePlus className="h-6 w-6 text-primary-foreground" />}
+            <div className="h-12 w-12 rounded-2xl overflow-hidden mx-auto mb-3 opacity-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="h-full w-full">
+                <rect width="100" height="100" rx="22" fill="#0f1117"/>
+                <rect x="8" y="14" width="78" height="68" rx="10" fill="#1c2030" stroke="#2a2f42" strokeWidth="1.5"/>
+                <rect x="8" y="14" width="78" height="22" rx="10" fill="#252a3d"/>
+                <rect x="8" y="26" width="78" height="10" fill="#252a3d"/>
+                <circle cx="24" cy="25" r="5.5" fill="#ff5f57"/>
+                <circle cx="40" cy="25" r="5.5" fill="#febc2e"/>
+                <circle cx="56" cy="25" r="5.5" fill="#27c840"/>
+                <path d="M18 52 L30 61 L18 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M68 52 L56 61 L68 70" stroke="#4d9ef7" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="51" y1="48" x2="40" y2="74" stroke="#27c840" strokeWidth="6" strokeLinecap="round"/>
+              </svg>
             </div>
             <p className="text-xs text-muted-foreground">
               {activeTab === "requests" ? "No message requests" : "No chats yet.\nStart a new conversation!"}
