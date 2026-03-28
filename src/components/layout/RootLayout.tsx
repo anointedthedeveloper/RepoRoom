@@ -1,12 +1,18 @@
 import { Outlet, NavLink, useNavigate, useLocation, Link } from "react-router-dom";
 import {
-  LayoutDashboard, LayoutGrid, Settings, LogOut,
+  LayoutDashboard, MessageSquare, LayoutGrid, Settings, LogOut,
   PanelLeftClose, PanelLeftOpen, Menu, X,
   BookOpen, Tag, Map, Info, FileText, Shield, ScrollText, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+import AvatarBubble from "@/components/chat/AvatarBubble";
+import ThemeToggle from "@/components/chat/ThemeToggle";
+import PageLoader from "@/components/ui/PageLoader";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const FaviconLogo = ({ className }: { className?: string }) => {
   const { mode } = useThemeContext();
@@ -29,12 +35,6 @@ const FaviconLogo = ({ className }: { className?: string }) => {
     </svg>
   );
 };
-import AvatarBubble from "@/components/chat/AvatarBubble";
-import ThemeToggle from "@/components/chat/ThemeToggle";
-import PageLoader from "@/components/ui/PageLoader";
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
